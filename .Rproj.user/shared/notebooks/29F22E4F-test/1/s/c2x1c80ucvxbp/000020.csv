@@ -1,0 +1,6 @@
+"0","library(R6)"
+"0","n <- 10"
+"0","X <- data.frame(X  = rnorm(n), Y= rnorm(n), Z  = rnorm(n))"
+"0",""
+"0","basis <- fourier_basis$new()"
+"0","basis <- basis$train(X)"

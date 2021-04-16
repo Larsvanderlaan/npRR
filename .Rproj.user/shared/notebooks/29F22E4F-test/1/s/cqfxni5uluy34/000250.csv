@@ -1,0 +1,3 @@
+"0","lrnr_sieve <- Lrnr_adaptive_sieve$new(stratify_by = ""A"", mult_by = ""ginv"")"
+"0","lrr_plugin <- LRR_plugin_task_generator$new(sieve_learner = lrnr_sieve)"
+"0","lrr_plugin <- lrr_plugin$train(task_RR)"

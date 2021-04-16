@@ -1,0 +1,96 @@
+"0","n <- 500000"
+"0","key <- ""hard_additive"""
+"0","D <- D +"
+"0","  node(""W1"", distr = ""runif"", min = -1, max = 1) +"
+"0","  node(""g"", distr = ""rconst"", const = 0.05 + 0.85*pnorm(1 - W1 + W1^2 + exp(W1) + (1+ W1)*sin(5*W1)) ) +"
+"0","  node(""A"", distr = ""rbinom"", size = 1, prob = g )+"
+"0","   node(""phi"", distr = ""rconst"", const = W1 + W1^3 + (1 - W1 + W1^2 + cos(5*W1))*sin(5*W1)) +"
+"0","  node(""theta"", distr = ""rconst"", const =  theta(W1))+"
+"0","    node(""gRtilde0"", distr = ""rconst"",  const = (-(exp(theta) + 1)*exp(phi) + (exp(2*phi)*(exp(theta) + 1)^2 + 4*(exp(theta + phi))*(1 - exp(phi)))^(0.5))/(2*exp(theta)*(1-exp(phi)))"
+"0","           ) +"
+"0","   node(""gRtilde1"", distr = ""rconst"",  const =    gRtilde0*exp(theta)) +"
+"0","   node(""gRtilde"", distr = ""rconst"",  const =   A*gRtilde1 + (1-A)*gRtilde0) +"
+"0","   node(""gR"", distr = ""rconst"",  const =  gRtilde ) +"
+"0","  node(""R"", distr = ""rbinom"", size = 1, prob = gR)+"
+"0","  node(""RR"", distr = ""rconst"", const = gRtilde1/gRtilde0)"
+"2","existing node W1 was modified
+"
+"2","existing node g was modified
+"
+"2","existing node A was modified
+"
+"2","existing node phi was modified
+"
+"2","existing node theta was modified
+"
+"2","existing node gRtilde0 was modified
+"
+"2","existing node gRtilde1 was modified
+"
+"2","existing node gRtilde was modified
+"
+"2","existing node gR was modified
+"
+"2","existing node R was modified
+"
+"2","existing node RR was modified
+"
+"0","setD <- set.DAG(D, vecfun = c(""bound"", ""round"", ""theta"", ""pnorm""))"
+"2","...automatically assigning order attribute to some nodes...
+"
+"2","node W1, order:1
+"
+"2","node g, order:2
+"
+"2","node A, order:3
+"
+"2","node phi, order:4
+"
+"2","node theta, order:5
+"
+"2","node gRtilde0, order:6
+"
+"2","node gRtilde1, order:7
+"
+"2","node gRtilde, order:8
+"
+"2","node gR, order:9
+"
+"2","node R, order:10
+"
+"2","node RR, order:11
+"
+"1","[1]"
+"1"," ""current list of user-defined vectorized functions: bound,round,theta,pnorm"""
+"1","
+"
+"0","data <- sim(setD, n = n)"
+"2","simulating observed dataset from the DAG object
+"
+"0","y <- 0"
+"0","sigma <- 1"
+"0","kernel <- function(x) {"
+"0","  exp(-(y-x)^2/sigma^2) / sqrt(2*3.14*sigma^2)"
+"0","}"
+"0",""
+"0","true <- mean(kernel(data$W1) * log(data$RR))"
+"0","true"
+"1","[1]"
+"1"," 0.0002223798"
+"1","
+"
+"0","quantile(kernel(data$W1) * log(data$RR))"
+"1","          0% "
+"1","         25% "
+"1","         50% "
+"1","         75% "
+"1","        100% "
+"1","
+"
+"1","-0.171142527 "
+"1","-0.150685707 "
+"1"," 0.000148479 "
+"1"," 0.150874844 "
+"1"," 0.171142527 "
+"1","
+"

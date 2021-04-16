@@ -1,0 +1,27 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1618525777555.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "237614793",
+    "id" : "54D57E05",
+    "lastKnownWriteTime" : 1618533894,
+    "last_content_update" : 1618533894022,
+    "path" : "~/npRR/inference.Rmd",
+    "project_path" : "inference.Rmd",
+    "properties" : {
+        "cursorPosition" : "143,17",
+        "last_setup_crc32" : "",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

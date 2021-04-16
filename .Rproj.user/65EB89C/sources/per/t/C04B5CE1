@@ -1,0 +1,27 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1618533890733.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3534414253",
+    "id" : "C04B5CE1",
+    "lastKnownWriteTime" : 1618532079,
+    "last_content_update" : 1618534593502,
+    "path" : "~/npRR/sims.Rmd",
+    "project_path" : "sims.Rmd",
+    "properties" : {
+        "cursorPosition" : "9,6",
+        "last_setup_crc32" : "",
+        "scrollLine" : "0",
+        "tempName" : "Untitled2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

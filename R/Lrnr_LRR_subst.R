@@ -9,7 +9,7 @@ Lrnr_LRR_subst <- R6Class(
     }
   ),
   private = list(
-    .properties = c( "RRtmle"),
+    .properties = c( "LRR"),
 
     .train = function(task) {
       fit_object <- list()
@@ -17,8 +17,13 @@ Lrnr_LRR_subst <- R6Class(
     },
     .predict = function(task = NULL) {
       fit_obj <- self$fit_object
-      ER1 <- bound(task$get_data(,"ER1"), c(0.001))
-      ER0 <- bound(task$get_data(,"ER0"), c(0.001))
+      if(all(task$get_data(,"Q1V")[[1]] == -1) ){
+        ER1 <- bound(task$get_data(,"Q1V"), c(0.001))
+        ER0 <- bound(task$get_data(,"Q0V"), c(0.001))
+      } else {
+        ER1 <- bound(task$get_data(,"Q1"), c(0.001))
+        ER0 <- bound(task$get_data(,"Q0"), c(0.001))
+      }
 
       return(log(ER1/ER0))
     }

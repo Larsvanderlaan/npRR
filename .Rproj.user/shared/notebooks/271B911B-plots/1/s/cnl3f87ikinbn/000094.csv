@@ -1,5 +1,0 @@
-"0","names <- c(""glm-"", ""glm.inter"", ""gam_2"", ""gam_4"", ""xgboost_3"", ""xgboost_4"", ""hal9001"")"
-"0","new_out <- do.call(rbind, lapply(names, get_data, out = out, type = c(""IPW"", ""plugin"") ))"
-"0",""
-"0"," "
-"0","print(plot_sim(new_out, column = ""risks""))"

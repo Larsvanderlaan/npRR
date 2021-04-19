@@ -1,5 +1,0 @@
-"0","#out1 <- out"
-"0"," out$name <- rownames(out)"
-"0","library(stringr)"
-"0","library(ggplot2)"
-"0","out"

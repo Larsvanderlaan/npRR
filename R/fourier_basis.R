@@ -129,3 +129,4 @@ fourier_basis <- R6Class(
     .params = list()
   )
 )
+

@@ -15,7 +15,7 @@ D <- DAG.empty()
 key <- "hard_additive"
 D <- D +
   node("W1", distr = "runif", min = -1, max = 1) +
-  node("g", distr = "rconst", const = 0.05 + 0.85*pnorm(1 - W1 + W1^2 + exp(W1) + (1+ W1)*sin(5*W1)) ) +
+  node("g", distr = "rconst", const = 0.1 + 0.8*pnorm(1 - W1 + W1^2 + exp(W1) + (1+ W1)*sin(5*W1)) ) +
   node("A", distr = "rbinom", size = 1, prob = g )+
    node("phi", distr = "rconst", const = W1 + W1^3 + (1 - W1 + W1^2 + cos(5*W1))*sin(5*W1)) +
   node("theta", distr = "rconst", const =  theta(W1))+
@@ -29,32 +29,144 @@ D <- D +
 
 setD <- set.DAG(D, vecfun = c("bound", "round", "theta", "pnorm"))
 data <- sim(setD, n = n)
-
 y <- 0
-sigma <- 0.5
+sigma <- 0.3
 kernel <- function(x) {
   exp(-(y-x)^2/sigma^2) / sqrt(2*3.14*sigma^2)
 }
+kernel <- Vectorize(kernel)
+
 true <- mean(kernel(data$W1) * log(data$RR))
 true
 quantile(kernel(data$W1) * log(data$RR))
+LRRtrue <- log(data$RR)
 rm(data)
 ```
+
+```{r}
+
+ task <- make_task(V, X, A, Y, folds = 10)
+  likelihood <- make_likelihood(task, lrnr_A ,lrnr_Y, cv = T )
+  genr <- make_generator(likelihood)
+
+```
+
+```{r}
+generator_Q1V <- function(tmle_task, likelihood) {
+  cf_task <- tmle_task$generate_counterfactual_task(uuid::UUIDgenerate(), data.table::data.table(A= rep(1, tmle_task$nrow)))
+  
+  Q1 <- likelihood$get_likelihood(cf_task, "Y", fold_number = "validation")
+  task <- tmle_task$get_regression_task("RR")
+  column_names <- task$add_columns(data.table(Q1 = Q1))
+  task <- task$next_in_chain(column_names = column_names, outcome = "Q1")
+  return(task)
+}
+
+generator_Q0V <- function(tmle_task, likelihood) {
+  cf_task <- tmle_task$generate_counterfactual_task(uuid::UUIDgenerate(), data.table::data.table(A= rep(0, tmle_task$nrow)))
+  
+  Q0 <- likelihood$get_likelihood(cf_task, "Y", fold_number = "validation")
+  task <- tmle_task$get_regression_task("RR")
+  column_names <- task$add_columns(data.table(Q0 = Q0))
+  task <- task$next_in_chain(column_names = column_names, outcome = "Q0")
+  return(task)
+}
+
+lf1 <- LF_derived$new("Q1V", Lrnr_hal9001$new(max_degree = 1, num_knots = 25, smoothness_orders=1), likelihood, generator_Q1V, type = "mean"  )
+
+lf0 <- LF_derived$new("Q0V", Lrnr_hal9001$new(max_degree = 1, num_knots = 25, smoothness_orders=1), likelihood, generator_Q0V, type = "mean"  )
+
+ likelihood$add_factors(list(lf0, lf1))
+
+generator_Q0V(task, likelihood )$data
+```
+
+
+```{r}
+ n <- 15000
+
+
+# hard_additive
+theta = function(W1) {(1+W1)}
+ D <- DAG.empty()
+theta <- Vectorize(theta)
+
+key <- "hard_additive"
+D <- D +
+  node("W1", distr = "runif", min = -1, max = 1) +
+  node("g", distr = "rconst", const = 0.1 + 0.8*pnorm(1 - W1 + W1^2 + exp(W1) + (1+ W1)*sin(5*W1)) ) +
+  node("A", distr = "rbinom", size = 1, prob = g )+
+   node("phi", distr = "rconst", const = W1 + W1^3 + (1 - W1 + W1^2 + cos(5*W1))*sin(5*W1)) +
+  node("theta", distr = "rconst", const =  theta(W1))+
+    node("gRtilde0", distr = "rconst",  const =  (1.1 + W1^2)/2.5
+           ) +
+   node("gRtilde1", distr = "rconst",  const =    (1.1 + -W1^2)/2.5 ) +
+   node("gRtilde", distr = "rconst",  const =   A*gRtilde1 + (1-A)*gRtilde0) +
+   node("gR", distr = "rconst",  const =  gRtilde ) +
+  node("R", distr = "rbinom", size = 1, prob = gR)+
+  node("RR", distr = "rconst", const = gRtilde1/gRtilde0)
+
+setD <- set.DAG(D, vecfun = c("bound", "round", "theta", "pnorm"))
+data <- sim(setD, n = n)
+
+
+```
+
+```{r}
+shift <- 0
+weights <- exp(data$gRtilde1-shift) + exp(data$gRtilde0-shift)
+Y <- exp(data$gRtilde1-shift)/weights
+
+W <-  data$W1
+ 
+# fit <- glm.fit(as.matrix(data.table(W, W^2, 1)), Y, weights = weights, family = binomial(), intercept = F)
+
+fit <- mgcv::gam(formula(Y~s(X)) ,list(X = W, Y =Y), weights = weights, family = binomial())
+#link <- as.matrix(data.table(W, W^2, 1)) %*%fit$coefficients 
+link <- as.vector(predict(fit, type = "link"))
+ 
+
+```
+
+y = ax + b
+ 
+
+```{r}
+true <- data$gRtilde1 - data$gRtilde0
+print(max(true)/max(link))
+pred <-  link 
+fit <-glm.fit(as.matrix(data.table(1,link)), true, intercept = F)
+fit$coefficients
+intercept <- mean(true - link )
+link <- link  
+slope <- (true - true[1]) / (link - link[1])
+print(intercept)
+print(quantile(slope, na.rm = T))
+pred <-  link 
+print(data.frame(true =true , pred =pred, link*0.262 - 0.198))
+cor(true, pred)
+mean(true - pred)
+sd(true - pred)
+plot(true, pred)
+plot(W, true)
+plot(W, pred)
+```
+
 
 
 ```{r, include = F}
 
 output_list <- list()
 passed <-c()
-for(i in 1:20) {
- n <- 10000
+for(i in 1:1) {
+ n <- 5000
 
 
 
  
 
 # hard_additive
-theta = function(W1) {W1}
+theta = function(W1) {(1+W1)^2}
  D <- DAG.empty()
 theta <- Vectorize(theta)
 
@@ -94,8 +206,9 @@ data <- sim(setD, n = n)
   
   lrnr_A <- Stack$new(Lrnr_xgboost$new(max_depth = 7), Lrnr_xgboost$new(max_depth = 3), Lrnr_xgboost$new(max_depth = 6), Lrnr_xgboost$new(max_depth = 5), Lrnr_xgboost$new(max_depth = 4))
   lrnr_Y <-lrnr_A
+  lrnr_V <- Lrnr_hal9001$new(max_degree = 1, num_knots = 25, smoothness_orders=1)
   task <- make_task(V, X, A, Y, folds = 10)
-  likelihood <- make_likelihood(task, lrnr_A ,lrnr_Y, cv = T )
+  likelihood <- make_likelihood(task, lrnr_A ,lrnr_Y, lrnr_V, cv = T )
   genr <- make_generator(likelihood)
   task_RR <- genr(task, "validation")
   
@@ -133,7 +246,7 @@ data <- sim(setD, n = n)
   
 
 y <- 0
-sigma <- 0.5
+sigma <- 0.3
 kernel <- function(x) {
   exp(-(y-x)^2/sigma^2) / sqrt(2*3.14*sigma^2)
 }
@@ -178,6 +291,7 @@ psi <- mean(est_X)
 EIC <- score1a + est_X - psi
 print(mean(EIC))
 radius <- 1.96*sd(EIC)/sqrt(n)
+print(sd(EIC))
 upper <- psi + radius
 lower <- psi - radius
 ests <- c(psi, lower, upper)
@@ -192,11 +306,13 @@ print(mean(passed))
 ```
 
 ```{r}
-plot(V, log(1 + exp(V)) - V)
-score1 <- A/(g1) *(-1/(1+ RR))* (Y-Q1) + (1-A)/((1-g1))*(RR/(1+ RR))*(Y - Q0) - (1/(1+ RR))*(Q1) + (RR/(1+ RR))*(Q0) 
-print(mean(score1))
+y <- 0
+sigma <- 0.
+kernel <- function(x) {
+  exp(-(y-x)^2/sigma^2) / sqrt(2*3.14*sigma^2)
+}
 
-
+quantile(kernel(V))
 ```
 
 ```{r}

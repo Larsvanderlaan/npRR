@@ -43,7 +43,7 @@ lrnr_SL.gam2 <-  make_learner(Lrnr_pkg_SuperLearner, "SL.gam", outcome_type = va
 
 ```{r, include = F}
 risks_all <- list()
-for(i in 1:10) {
+for(i in 1:50) {
   # Generate data
   n <- 5000
 #   V <- as.matrix(replicate(3,runif(n, min = -1, max = 1)))
@@ -97,12 +97,13 @@ data <- sim(setD, n = n)
   Q <- data$gRtilde
   g1 <- data$g
   
-  lrnr_A <- Lrnr_hal9001$new(max_degree = 2, smoothness_orders = 1, num_knots = c(10, 5))
-  lrnr_Y <- Lrnr_hal9001$new(max_degree = 2, smoothness_orders = 1, num_knots = c(10, 5))
-  #Stack$new(Lrnr_xgboost$new(max_depth = 7), Lrnr_xgboost$new(max_depth = 3), Lrnr_xgboost$new(max_depth = 6), Lrnr_xgboost$new(max_depth = 5), Lrnr_xgboost$new(max_depth = 4))
+  lrnr_A <- Lrnr_hal9001$new(max_degree = 1, smoothness_orders = 1, num_knots = c(10, 5))
+  lrnr_Y <- Lrnr_hal9001$new(max_degree = 1, smoothness_orders = 1, num_knots = c(10, 5))
+  lrnr_Y <- Stack$new(Lrnr_xgboost$new(max_depth = 7), Lrnr_xgboost$new(max_depth = 3), Lrnr_xgboost$new(max_depth = 6), Lrnr_xgboost$new(max_depth = 5), Lrnr_xgboost$new(max_depth = 4))
+  lrnr_A <- lrnr_Y
   
   task <- make_task(V, X, A, Y, folds = 5)
-  likelihood <- make_likelihood(task, lrnr_A ,lrnr_Y, cv = F)
+  likelihood <- make_likelihood(task, lrnr_A ,lrnr_Y, lrnr_V = NULL, cv = T)
   genr <- make_generator(likelihood)
   task_RR <- genr(task, "validation")
   # Q <- 0.05 + 0.9*plogis(0.9*(-0.5 + A + 0.3*A*(sin(3.5*V) %*% c(1,-1,1) + cos(3.5*V) %*% c(1,-1,1)) + sin(3*V) %*% c(-1,1,1) + cos(3*V) %*% c(1,1,-1)))
@@ -139,21 +140,12 @@ data <- sim(setD, n = n)
   lrnrs <- list()
   for(name in names(basis_list)) {
     basis <- basis_list[[name]]
-    if(is.null(basis)) {
-      lrnr_sieve <- NULL
-    } else {
-      lrnr_sieve <- Lrnr_adaptive_sieve$new(basis_generator = basis,mult_by = c("Qg1", "Qg0"))
-    }
-    lrr_IPW <- LRR_IPW_task_generator$new(sieve_learner = lrnr_sieve, name = name)
+    lrr_IPW <- LRR_IPW_task_generator$new(sieve_basis = basis, name = name)
  
     lrnrs <- c(lrnrs, list(Pipeline$new(lrr_IPW, lrnr$clone())))
     
-     if(is.null(basis)) {
-      lrnr_sieve <- NULL
-    } else {
-      lrnr_sieve <- Lrnr_adaptive_sieve$new(basis_generator = basis,stratify_by = "A", mult_by = "ginv")
-    }
-    lrr_plugin <- LRR_plugin_task_generator$new(sieve_learner = lrnr_sieve, name = name)
+      
+    lrr_plugin <- LRR_plugin_task_generator$new(sieve_basis = basis, name = name)
      
     lrnrs <- c(lrnrs, list(Pipeline$new(lrr_plugin, lrnr$clone())))
     
@@ -190,6 +182,13 @@ out <- out[order(out$risks),,drop = F]
 out
 ```
 
+```{r}
+
+lr <- LRR_plugin_task_generator$new(sieve_basis = basis_list[[3]], name = "name")
+lr <- lr$train(task_RR)
+lr$chain(task_RR)$data
+quantile(lr$chain(task_RR)$data$weights)
+```
 
 ```{r, include = F}
 lrnr_sieve <- Lrnr_adaptive_sieve$new(basis_generator = basis_list[[3]],mult_by = c("Qg1", "Qg0"))

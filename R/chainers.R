@@ -44,8 +44,21 @@ LRR_plugin_task_generator <- R6Class(
   classname = "LRR_plugin_task_generator", inherit = Lrnr_base,
   portable = TRUE, class = TRUE,
   public = list(
-    initialize = function(Q_var = "Q", Q1_var = "Q1", Q0_var = "Q0", treatment_var = "A", outcome_var = "Y", g1_var = "g1", ginv_var = "ginv",  sieve_learner = NULL,  name = "plugin", ...) {
-      params <- args_to_list()
+    initialize = function(sieve_basis = NULL,  name = "plugin", ...) {
+      if(is.null(sieve_basis)) {
+        sieve_learner <- NULL
+        sieve_learner_Q1V <- NULL
+        sieve_learner_Q0V <- NULL
+      } else {
+        sieve_learner <- Lrnr_adaptive_sieve$new(basis_generator = sieve_basis, stratify_by = "A", mult_by = "ginv")
+        sieve_learner_Q1V <- Lrnr_adaptive_sieve$new(basis_generator = sieve_basis)
+        sieve_learner_Q0V <- Lrnr_adaptive_sieve$new(basis_generator = sieve_basis)
+
+      }
+      params <- list(name = name, sieve_basis = sieve_basis, Q_var = "Q", Q1_var = "Q1", Q0_var = "Q0", treatment_var = "A", outcome_var = "Y", g1_var = "g1", ginv_var = "ginv")
+      params$sieve_learner <- sieve_learner
+      params$sieve_learner_Q1V <- sieve_learner_Q1V
+      params$sieve_learner_Q0V <- sieve_learner_Q0V
       super$initialize(params = params, ...)
       private$.name <- paste0(self$params$name, "_", self$name)
 
@@ -64,14 +77,49 @@ LRR_plugin_task_generator <- R6Class(
       trt <- self$params$treatment_var
       outcome <- self$params$outcome_var
       Q_var <- self$params$Q_var
+      Q0_var <- self$params$Q0_var
+      Q1_var <- self$params$Q1_var
       lrnr <- self$params$sieve_learner
       if(is.null(lrnr)) {
         return(list())
       }
       task_q <- task$next_in_chain(offset = Q_var, covariates = union(task$nodes$covariates, trt), outcome = outcome)
+
       lrnr <- lrnr$train(task_q)
       fit_object <- list()
       fit_object$lrnr <- lrnr
+      if(all(task$get_data(, "Q1V")[[1]]==-1)){
+        return(fit_object)
+      }
+      g1 <- task$get_data(,self$params$g1_var)[[1]]
+      g0 <- 1-g1
+
+      cf_data1 <- data.table(rep(1, task_q$nrow))
+      names(cf_data1) <- trt
+      cf_data1[[self$params$ginv_var]] <-  1/g1
+      cf_data0 <- data.table(rep(0, task_q$nrow))
+      names(cf_data0) <- trt
+      cf_data0[[self$params$ginv_var]] <-  1/g0
+      column_map1 <- task_q$add_columns(cf_data1)
+      column_map0 <- task_q$add_columns(cf_data0)
+      task_q1 <- task_q$next_in_chain(column_names = column_map1, offset = Q1_var)
+      task_q0 <- task_q$next_in_chain(column_names = column_map0, offset = Q0_var)
+      Qnew0 <- lrnr$predict(task_q0)
+      Qnew1 <- lrnr$predict(task_q1)
+
+      column_map <- task_q$add_columns(data.table(Qnew1 = Qnew1, Qnew0=Qnew0))
+      task_qV1 <- task_q$next_in_chain(column_names = column_map, outcome = "Qnew1", offset = "Q1V")
+      task_qV0 <- task_q$next_in_chain(column_names = column_map, outcome = "Qnew0", offset = "Q0V")
+      task_qV0 <- sl3_Task$new(task_qV0$internal_data, nodes = task_qV0$nodes, outcome_type = variable_type("binomial"), column_names = task_qV0$column_names, folds = task_qV0$folds, row_index = task_qV0$row_index)
+      task_qV1 <- sl3_Task$new(task_qV1$internal_data, nodes = task_qV1$nodes, outcome_type = variable_type("binomial"), column_names = task_qV1$column_names, folds = task_qV1$folds, row_index = task_qV1$row_index)
+
+      lrnr1 <- self$params$sieve_learner_Q1V
+      lrnr0 <- self$params$sieve_learner_Q0V
+      lrnr1 <- lrnr1$train(task_qV1)
+      lrnr0 <- lrnr0$train(task_qV0)
+      fit_object$lrnr1 <- lrnr1
+      fit_object$lrnr0 <- lrnr0
+
       return(fit_object)
     },
 
@@ -115,19 +163,39 @@ LRR_plugin_task_generator <- R6Class(
         Qnew1 <-  unlist(task$get_data(,Q1_var))
       }
 
+      if(!is.null(self$fit_object$lrnr1)){
+
+        column_map <- task_q$add_columns(data.table(Qnew1 = Qnew1, Qnew0=Qnew0))
+        task_qV1 <- task_q$next_in_chain(column_names = column_map, outcome = "Qnew1", offset = "Q1V")
+        task_qV0 <- task_q$next_in_chain(column_names = column_map, outcome = "Qnew0", offset = "Q0V")
+
+        lrnr1 <- self$fit_object$lrnr1
+        lrnr0 <- self$fit_object$lrnr0
+        Q1Vnew <- lrnr1$predict(task_qV1)
+        Q0Vnew <- lrnr0$predict(task_qV0)
+        weights <- (Q0Vnew + Q1Vnew)*task$weights
+        weights <- weights/mean(weights)
+        outcome_val <- Q1Vnew / (Q0Vnew + Q1Vnew)
+        new_data <- data.table(outcome_val, weights)
+        colnames(new_data) <- c("outcome", "weights")
+        new_data$Q0Vnew <- Q0Vnew
+        new_data$Q1Vnew <- Q1Vnew
 
 
-      weights <- (Qnew0 + Qnew1)*task$weights
+      } else {
+        weights <- (Qnew0 + Qnew1)*task$weights
+        weights <- weights/mean(weights)
+        outcome_val <- Qnew1 / (Qnew0 + Qnew1)
+        new_data <- data.table(outcome_val, weights)
+        colnames(new_data) <- c("outcome", "weights")
+        new_data$Qnew0 <- Qnew0
+        new_data$Qnew1 <- Qnew1
+        new_data$Qnew <- Qnew
+      }
 
-      weights <- weights/mean(weights)
+
 
       covariates_plugin <- setdiff(task$covariates, trt)
-      outcome_val <- Qnew1 / (Qnew0 + Qnew1)
-      new_data <- data.table(outcome_val, weights)
-      colnames(new_data) <- c("outcome", "weights")
-      new_data$Qnew0 <- Qnew0
-      new_data$Qnew1 <- Qnew1
-      new_data$Qnew <- Qnew
       column_names <- task$add_columns(new_data)
       task <- task$next_in_chain(column_names = column_names, weights = "weights", outcome = "outcome", covariates = covariates_plugin)
       task <- sl3_Task$new(task$internal_data, nodes = task$nodes, outcome_type = variable_type("binomial"), column_names = task$column_names, folds = task$folds, row_index = task$row_index)
@@ -141,8 +209,14 @@ LRR_IPW_task_generator <- R6Class(
   classname = "LRR_IPW_task_generator", inherit = Lrnr_base,
   portable = TRUE, class = TRUE,
   public = list(
-    initialize = function(g1_var = "g1", treatment_var = "A", outcome_var = "Y", sieve_learner = NULL, name = "IPW", ...) {
-      params <- args_to_list()
+    initialize = function(sieve_basis, name = "IPW", ...) {
+      if(is.null(sieve_basis)) {
+        sieve_learner <- NULL
+      } else {
+        sieve_learner <-  Lrnr_adaptive_sieve$new(basis_generator = sieve_basis, mult_by = c("Qg1", "Qg0"))
+      }
+      params <- list(name = name, g1_var = "g1", treatment_var = "A", outcome_var = "Y", sieve_learner = sieve_learner)
+
       super$initialize(params = params, ...)
       private$.name <- paste0(self$params$name, "_", self$name)
     },

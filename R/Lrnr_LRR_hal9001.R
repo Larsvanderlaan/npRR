@@ -1,7 +1,7 @@
 
 
 #' @export
-Lrnr_LRR_hal9001 <- R6Class(
+Lrnr_LRR_hal9001_discrete <- R6Class(
   classname = "Lrnr_LRR_hal9001", inherit = Lrnr_base,
   portable = TRUE, class = TRUE,
   public = list(
@@ -16,7 +16,7 @@ Lrnr_LRR_hal9001 <- R6Class(
     }
   ),
   private = list(
-    .properties = c( "RRtmle"),
+    .properties = c("LRR"),
 
     .train = function(task) {
       method <- self$params$method
@@ -61,3 +61,42 @@ Lrnr_LRR_hal9001 <- R6Class(
     .required_packages = c("hal9001")
   )
 )
+
+
+
+
+#' @export
+Lrnr_LRR_hal9001  <- R6Class(
+  classname = "Lrnr_LRR_hal9001", inherit = Lrnr_base,
+  portable = TRUE, class = TRUE,
+  public = list(
+    initialize = function(max_degree = 1,
+                          smoothness_orders = 1,
+                          num_knots = c(100, 50),
+                          ...) {
+      params <- args_to_list()
+      params$family <- binomial()
+      lrnr_hal <- do.call(Lrnr_hal9001$new, params)
+      params$lrnr_hal9001 <- lrnr_hal
+      super$initialize(params = params, ...)
+    }
+  ),
+  private = list(
+    .properties = c( "LRR"),
+
+    .train = function(task) {
+      lrnr_hal <- params$lrnr_hal9001
+      lrnr_hal <- lrnr_hal$train(task)
+      return(fit_object = list(lrnr_hal = lrnr_hal))
+    },
+    .predict = function(task = NULL) {
+      lrnr_hal <- fit_object$lrnr_hal
+      preds <- lrnr_hal$predict(task)
+      preds <- stats::qlogis(preds)
+      return(preds)
+    },
+
+    .required_packages = c("hal9001")
+  )
+)
+

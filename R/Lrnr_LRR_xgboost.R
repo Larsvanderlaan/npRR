@@ -11,21 +11,14 @@ Lrnr_LRR_xgboost <- R6Class(
     }
   ),
   private = list(
-    .properties = c("binomial"),
+    .properties = c("LRR"),
 
     .train = function(task) {
-      print("xgboost train")
+
       method <- self$params$method
-
       X <- task$X_intercept
-
-
       Y <- task$Y
-
-        weights <- task$weights
-
-
-
+      weights <- task$weights
       #weights <- weights * task$weights
       params <- list(verbose = 0, nrounds = self$params$nrounds, nthread = self$params$nthread, label = Y, data = as.matrix(X), weight = weights, max_depth = self$params$max_depth,
                      eta = self$params$eta, num_parallel_tree = self$params$num_parallel_tree, gamma = self$params$gamma, objective = "reg:logistic" )
@@ -34,6 +27,7 @@ Lrnr_LRR_xgboost <- R6Class(
         params$colsample_bynode <- 0.8
         params$nrounds = 1
         params$eta = 1
+        params$num_parallel_tree <- max(self$params$num_parallel_tree, 500)
 
       }
       fit_object <- do.call(xgboost::xgboost, params)

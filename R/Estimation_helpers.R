@@ -2,7 +2,7 @@
 #' @import data.table
 #' @import tmle3
 
-make_task <- function(V, X = V, A, Y, weights = NULL,...) {
+make_task <- function(V, X = V, A, Y, Delta = NULL, weights = NULL,...) {
 
   if(is.vector(V)) {
     V <- as.matrix(V)
@@ -18,23 +18,27 @@ make_task <- function(V, X = V, A, Y, weights = NULL,...) {
   if(is.null(weights)) {
     weights <- rep(1, length(Y))
   }
-  data <- data.table(V, X, A = A, Y = Y, weights = weights)
+  data <- data.table(V, X, A = A, Y = Y, Delta = Delta, weights = weights)
 
   data <- data[,!duplicated(names(data)), with = F]
 
-  npsem <- list(tmle3::define_node("V", colnames(V), c()),
-                tmle3::define_node("X", colnames(X), c()),
-                tmle3::define_node("A", "A", c("X")),
-                tmle3::define_node("Y", "Y", c("A", "X")),
-                tmle3::define_node("RR", c(), c("V")))
-
+  npsem <- list(V = tmle3::define_node("V", colnames(V), c()),
+                X = tmle3::define_node("X", colnames(X), c()),
+                A = tmle3::define_node("A", "A", c("X")),
+                Y = tmle3::define_node("Y", "Y", c("A", "X")),
+                RR = tmle3::define_node("RR", c(), c("V")))
+  if(!is.null(data$Delta)) {
+    censoring_node <- tmle3::define_node("Delta", "Delta", c("A", "X"))
+    npsem$Y$censoring_node <- censoring_node
+    npsem$Delta <- censoring_node
+  }
   task <- tmle3_Task$new(data, npsem, weights = "weights",...)
   return(task)
 }
 
 # Make likelihood
 #' @import sl3
-make_likelihood <- function(task, lrnr_A, lrnr_Y, lrnr_V = NULL, cv = TRUE) {
+make_likelihood <- function(task, lrnr_A, lrnr_Y, lrnr_V = NULL, lrnr_Delta = NULL, cv = TRUE) {
   if(task$npsem$Y$variable_type$type == "binomial") {
     loss_Y <- loss_loglik_binomial
   } else {
@@ -56,6 +60,10 @@ make_likelihood <- function(task, lrnr_A, lrnr_Y, lrnr_V = NULL, cv = TRUE) {
     lf1 <- LF_derived$new("Q1V",lrnr_V, likelihood, generator_Q1V, type = "mean", bound = c(0,1)  )
     lf0 <- LF_derived$new("Q0V", lrnr_V$clone(), likelihood, generator_Q0V, type = "mean",bound = c(0,1)   )
     likelihood$add_factors(list(lf0, lf1))
+  }
+  if(!is.null(task$npsem$Delta)) {
+    lf_delta <- LF_fit$new("Delta", lrnr_Delta, type = "mean")
+    likelihood$add_factors(list(lf_delta))
   }
   return(likelihood)
 }
@@ -108,7 +116,14 @@ make_generator <- function(likelihood) {
     Y <- tmle_task$get_tmle_node("Y")
     A <- tmle_task$get_tmle_node("A")
     g <- likelihood$get_likelihood(tmle_task, "A", fold_number)
-    g <- tmle3::bound(g, 0.01)
+    if(!is.null(tmle_task$npsem$Delta)) {
+      G <- likelihood$get_likelihood(tmle_task, "Delta", fold_number)
+      Delta <- tmle_task$get_tmle_node("Delta")
+    } else {
+      G <- 1
+      Delta <- 1
+    }
+    g <- tmle3::bound(g, 0.005)
     Q <- likelihood$get_likelihood(tmle_task, "Y", fold_number)
     cf_task1 <- tmle_task$generate_counterfactual_task(uuid::UUIDgenerate(), data.table::data.table(A= rep(1, length(g))))
     cf_task0 <- tmle_task$generate_counterfactual_task(uuid::UUIDgenerate(), data.table::data.table(A=rep(0, length(g))))
@@ -129,7 +144,7 @@ make_generator <- function(likelihood) {
     outcome <- c("Y")
     weights <- c(tmle_task$nodes$weights)
 
-    data <- cbind(data.table(g1 = ifelse(A==1, g, 1-g), Q = Q, g = g, ginv = 1/g, Y = Y, A = A, Q1 = Q1, Q0 = Q0, Q0V=Q0V, Q1V = Q1V), X)
+    data <- cbind(data.table(g1 = ifelse(A==1, g, 1-g), Q = Q, g = g, ginv = 1/g,  gGinv = 1/g/ G,  Y = Y, A = A, Q1 = Q1, Q0 = Q0, Q0V=Q0V, Q1V = Q1V, G = G, Delta = Delta), X)
     data <- cbind(task$get_data(,weights), data)
     #data$RR <- data$Q1 / data$Q0
     data$Qg1 <- data$Q1 / data$g1
@@ -151,7 +166,13 @@ make_eff_loss <- function(tmle_task, likelihood) {
   likelihood <- likelihood
   Y <- tmle_task$get_tmle_node("Y")
   A <- tmle_task$get_tmle_node("A")
-
+  if(!is.null(tmle_task$npsem$Delta)) {
+    Delta <- tmle_task$get_tmle_node("Delta")
+    G <-  likelihood$get_likelihood(tmle_task, "Delta", "validation")
+  } else{
+    Delta <- rep(1, length(Y))
+    G <- rep(1, length(Y))
+  }
   g <- likelihood$get_likelihood(tmle_task, "A", "validation")
   lik <- likelihood
 
@@ -181,11 +202,13 @@ make_eff_loss <- function(tmle_task, likelihood) {
       g <- g[row_index]
       A <- A[row_index]
       Y <- Y[row_index]
+      Delta <- Delta[row_index]
+      G <- G[row_index]
     }
     le <- log(1 + exp(LRR))
     term1 <- (Q0V)*le + (le - LRR)*Q1V
     term2 <- (le - LRR)*(Q1 - Q1V) + le*(Q0 - Q0V)
-    term3 <- (A/g)*(le - LRR)*(Y - Q1) + ((1-A)/g)*( le)*(Y - Q0)
+    term3 <- (Delta/G)*(A/g)*(le - LRR)*(Y - Q1) + (Delta/G)*((1-A)/g)*( le)*(Y - Q0)
 
 
     loss <- term1 + term2 + term3

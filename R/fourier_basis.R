@@ -2,6 +2,7 @@
 #'
 #' @docType class
 #' @import R6
+#' @importFrom fda create.fourier.basis eval.basis
 #' @importFrom purrr reduce
 #'
 #' @export

@@ -9,6 +9,7 @@ LazyData: true
 RoxygenNote: 7.1.1
 Imports: 
   sl3,
+  SuperLearner,
   tmle3,
   stats,
   data.table,

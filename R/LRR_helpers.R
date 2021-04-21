@@ -1,7 +1,10 @@
 
 
-
-make_fourier_basis_list <- function(V) {
+#' Generates a default \codE{basis_list} using the fourier basis.
+#' @param V A vector or matrix of values of `V`. See the corresponding argument in \code{npRR}.
+#' @param The maximum size of the list.
+#' @returns A list of \code{fourier_basis} objects.
+make_fourier_basis_list <- function(V, size = Inf) {
   V <- as.matrix(V)
   if(ncol(V) == 1) {
     basis1 <- fourier_basis$new(orders = c(1,0,0), max_degrees = c(1,2,3))
@@ -23,10 +26,10 @@ make_fourier_basis_list <- function(V) {
                        "k=12" = basis8)
   } else {
     basis1 <- fourier_basis$new(orders = c(1,0,0), max_degrees = c(1,2,3))
-    basis2 <- fourier_basis$new(orders = c(2,0,0), max_degrees = c(1,2,3))
-    basis2a <- fourier_basis$new(orders = c(4,0,0), max_degrees = c(1,2,3))
-    basis3 <- fourier_basis$new(orders = c(1,1,0), max_degrees = c(1,2,3))
-    basis4 <- fourier_basis$new(orders = c(3,1,0), max_degrees = c(1,2,3))
+    basis2 <- fourier_basis$new(orders = c(1,1,0), max_degrees = c(1,2,3))
+    basis2a <- fourier_basis$new(orders = c(2,0,0), max_degrees = c(1,2,3))
+    basis3 <- fourier_basis$new(orders = c(3,1,0), max_degrees = c(1,2,3))
+    basis4 <- fourier_basis$new(orders = c(4,0,0), max_degrees = c(1,2,3))
     basis5 <- fourier_basis$new(orders = c(4,1,0), max_degrees = c(1,2,3))
     basis6 <- fourier_basis$new(orders = c(5,1,0), max_degrees = c(1,2,3))
     basis7 <- fourier_basis$new(orders = c(6,2,0), max_degrees = c(1,2,3))
@@ -43,6 +46,7 @@ make_fourier_basis_list <- function(V) {
       basis_list$`k=3,2,1` <- fourier_basis$new(orders = c(5,2,1), max_degrees = c(1,2,3))
     }
   }
+  basis_list <- basis_list[1:min(length(basis_list), size)]
   return(basis_list)
 
 }

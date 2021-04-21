@@ -44,18 +44,18 @@ LRR_plugin_task_generator <- R6Class(
   classname = "LRR_plugin_task_generator", inherit = Lrnr_base,
   portable = TRUE, class = TRUE,
   public = list(
-    initialize = function(sieve_basis = NULL,  name = "plugin", ...) {
+    initialize = function(sieve_basis = NULL,  name = "plugin", sequential = F, ...) {
       if(is.null(sieve_basis)) {
         sieve_learner <- NULL
         sieve_learner_Q1V <- NULL
         sieve_learner_Q0V <- NULL
       } else {
-        sieve_learner <- Lrnr_adaptive_sieve$new(basis_generator = sieve_basis, stratify_by = "A", mult_by = "ginv")
+        sieve_learner <- Lrnr_adaptive_sieve$new(basis_generator = sieve_basis, stratify_by = "A", mult_by = "gGinv")
         sieve_learner_Q1V <- Lrnr_adaptive_sieve$new(basis_generator = sieve_basis)
         sieve_learner_Q0V <- Lrnr_adaptive_sieve$new(basis_generator = sieve_basis)
 
       }
-      params <- list(name = name, sieve_basis = sieve_basis, Q_var = "Q", Q1_var = "Q1", Q0_var = "Q0", treatment_var = "A", outcome_var = "Y", g1_var = "g1", ginv_var = "ginv")
+      params <- list(sequential=sequential,name = name, sieve_basis = sieve_basis, Q_var = "Q", Q1_var = "Q1", Q0_var = "Q0", treatment_var = "A", outcome_var = "Y", g1_var = "g1", ginv_var = "gGinv")
       params$sieve_learner <- sieve_learner
       params$sieve_learner_Q1V <- sieve_learner_Q1V
       params$sieve_learner_Q0V <- sieve_learner_Q0V
@@ -84,22 +84,22 @@ LRR_plugin_task_generator <- R6Class(
         return(list())
       }
       task_q <- task$next_in_chain(offset = Q_var, covariates = union(task$nodes$covariates, trt), outcome = outcome)
-
-      lrnr <- lrnr$train(task_q)
+      task_q_sub <- task_q[task$get_data(,"Delta")[[1]]==1]
+      lrnr <- lrnr$train(task_q_sub)
       fit_object <- list()
       fit_object$lrnr <- lrnr
-      if(all(task$get_data(, "Q1V")[[1]]==-1)){
+      if(!self$params$sequential || all(task$get_data(, "Q1V")[[1]]==-1)){
         return(fit_object)
       }
       g1 <- task$get_data(,self$params$g1_var)[[1]]
       g0 <- 1-g1
-
+      G <- task$get_data(,"G")[[1]]
       cf_data1 <- data.table(rep(1, task_q$nrow))
       names(cf_data1) <- trt
-      cf_data1[[self$params$ginv_var]] <-  1/g1
+      cf_data1[["gGinv"]] <-  1/g1/G
       cf_data0 <- data.table(rep(0, task_q$nrow))
       names(cf_data0) <- trt
-      cf_data0[[self$params$ginv_var]] <-  1/g0
+      cf_data0[["gGinv"]] <-  1/g0/G
       column_map1 <- task_q$add_columns(cf_data1)
       column_map0 <- task_q$add_columns(cf_data0)
       task_q1 <- task_q$next_in_chain(column_names = column_map1, offset = Q1_var)
@@ -139,14 +139,15 @@ LRR_plugin_task_generator <- R6Class(
       if(!is.null(lrnr)) {
         g1 <- task$get_data(,self$params$g1_var)[[1]]
         g0 <- 1-g1
+        G <- task$get_data(,"G")[[1]]
         task_q <- task$next_in_chain(offset = Q_var, covariates = union(task$nodes$covariates, trt), outcome = outcome)
         Qnew <- lrnr$predict(task_q)
         cf_data1 <- data.table(rep(1, task_q$nrow))
         names(cf_data1) <- trt
-        cf_data1[[self$params$ginv_var]] <-  1/g1
+        cf_data1[[self$params$ginv_var]] <-  1/g1/G
         cf_data0 <- data.table(rep(0, task_q$nrow))
         names(cf_data0) <- trt
-        cf_data0[[self$params$ginv_var]] <-  1/g0
+        cf_data0[[self$params$ginv_var]] <-  1/g0/G
         column_map1 <- task_q$add_columns(cf_data1)
         column_map0 <- task_q$add_columns(cf_data0)
         task_q1 <- task_q$next_in_chain(column_names = column_map1, offset = Q1_var)
@@ -163,7 +164,7 @@ LRR_plugin_task_generator <- R6Class(
         Qnew1 <-  unlist(task$get_data(,Q1_var))
       }
 
-      if(!is.null(self$fit_object$lrnr1)){
+      if(self$params$sequential && !is.null(self$fit_object$lrnr1)){
 
         column_map <- task_q$add_columns(data.table(Qnew1 = Qnew1, Qnew0=Qnew0))
         task_qV1 <- task_q$next_in_chain(column_names = column_map, outcome = "Qnew1", offset = "Q1V")

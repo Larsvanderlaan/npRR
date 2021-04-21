@@ -8,87 +8,196 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-n <- 15000
-  
-  
-  
-  # hard_additive
-  theta = function(W1,W2,W3) {W1^2 + (W2 + W3 - W1)/2}
-  D <- DAG.empty()
-  theta <- Vectorize(theta)
-  
-  key <- "hard_additive"
-  D <- D +
-    node("W1", distr = "runif", min = -1, max = 1) +
-    node("W2", distr = "runif", min = -1, max = 1) +
-    node("W3", distr = "runif", min = -1, max = 1) +
-    node("g", distr = "rconst", const = 0.15 + 0.75*plogis(cos((W1+W2 + W3)*5) * sin((W1+W2 + W3)*5) + cos((W1+W2 + W3)*5) + sin((W1+W2 + W3)*5) + sin(W1*5) + W1*sin(W1*5) + cos(W2*5) + 2*W1*W2 - sin(W3*5) + sin(5*W1*W3) + 2*W1*W2*W3 + W3*sin(W1*5) + cos(W2*4)*sin(W1*5) ) ) +
-    node("A", distr = "rbinom", size = 1, prob = g )+
-    node("phi", distr = "rconst", const = (1+W1 + W2)*sin(W1*5)  + (1+W2 + W3)*cos(5*W2) + 0.5*exp(W1*W2) + cos(6*W1*W3)+ sin(6*W3*W2) + sin(6*W1*W2) + W3*sin(5*W3) + W2*sin(5*W3)) +
-    node("theta", distr = "rconst", const =  theta(W1,W2,W3))+
-    node("gRtilde0", distr = "rconst",  const = (-(exp(theta) + 1)*exp(phi) + (exp(2*phi)*(exp(theta) + 1)^2 + 4*(exp(theta + phi))*(1 - exp(phi)))^(0.5))/(2*exp(theta)*(1-exp(phi)))
-    ) +
-    node("gRtilde1", distr = "rconst",  const =    gRtilde0*exp(theta)) +
-    node("gRtilde", distr = "rconst",  const =   A*gRtilde1 + (1-A)*gRtilde0) +
-    node("gR", distr = "rconst",  const =  gRtilde ) +
-    node("R", distr = "rbinom", size = 1, prob = gR)+
-    node("RR", distr = "rconst", const = gRtilde1/gRtilde0)
-  
-  setD <- set.DAG(D, vecfun = c("bound", "round", "theta"))
-  data <- sim(setD, n = n)
- 
-  Y <- data$R
-  A <- data$A
-  V <- as.matrix(data[, c("W1")])
-  X <- as.matrix(data[, c("W1", "W2", "W3")])
-  
-  
+n <-  2500
+
+
+
+# hard_additive
+theta = function(W1,W2,W3) {W1^2 + (W2 + W3 - W1)/2}
+D <- DAG.empty()
+theta <- Vectorize(theta)
+
+key <- "hard_additive"
+D <- D +
+  node("W1", distr = "runif", min = -1, max = 1) +
+  node("W2", distr = "runif", min = -1, max = 1) +
+  node("W3", distr = "runif", min = -1, max = 1) +
+  node("g", distr = "rconst", const = 0.15 + 0.75*plogis(cos((W1+W2 + W3)*5) * sin((W1+W2 + W3)*5) + cos((W1+W2 + W3)*5) + sin((W1+W2 + W3)*5) + sin(W1*5) + W1*sin(W1*5) + cos(W2*5) + 2*W1*W2 - sin(W3*5) + sin(5*W1*W3) + 2*W1*W2*W3 + W3*sin(W1*5) + cos(W2*4)*sin(W1*5) ) ) +
+  node("A", distr = "rbinom", size = 1, prob = g )+
+  node("phi", distr = "rconst", const = (1+W1 + W2)*sin(W1*5)  + (1+W2 + W3)*cos(5*W2) + 0.5*exp(W1*W2) + cos(6*W1*W3)+ sin(6*W3*W2) + sin(6*W1*W2) + W3*sin(5*W3) + W2*sin(5*W3)) +
+  node("theta", distr = "rconst", const =  theta(W1,W2,W3))+
+  node("gRtilde0", distr = "rconst",  const = (-(exp(theta) + 1)*exp(phi) + (exp(2*phi)*(exp(theta) + 1)^2 + 4*(exp(theta + phi))*(1 - exp(phi)))^(0.5))/(2*exp(theta)*(1-exp(phi)))
+  ) +
+  node("gRtilde1", distr = "rconst",  const =    gRtilde0*exp(theta)) +
+  node("gRtilde", distr = "rconst",  const =   A*gRtilde1 + (1-A)*gRtilde0) +
+  node("gR", distr = "rconst",  const =  gRtilde ) +
+  node("R", distr = "rbinom", size = 1, prob = gR)+
+  node("RR", distr = "rconst", const = gRtilde1/gRtilde0)
+
+setD <- set.DAG(D, vecfun = c("bound", "round", "theta"))
+data <- sim(setD, n = n)
+
+Y <- data$R
+A <- data$A
+V <- as.matrix(data[, c("W1")])
+X <- as.matrix(data[, c("W1", "W2", "W3")])
+
+
 ```
 
 ```{r}
- 
+
+ inference <- npRR_inference(out)
 df <- as.data.frame(inference$estimates)
+df
+ggplot(df, aes(x = V, y = (RR))) + geom_line() + geom_ribbon(aes(ymin= (lower_CI), ymax= (upper_CI)), alpha=0.2) + xlab("Value of V") + ylab("Relative Risk")  
 
-ggplot(df, aes(x = V, y = RR)) + geom_line() + geom_ribbon(aes(ymin=lower_CI, ymax=upper_CI), alpha=0.2) + xlab("Value of V") + ylab("Relative Risk")
+
+ggplot(df, aes(x = V, y = (RR))) + geom_line() + geom_ribbon(aes(ymin= (lower_CI), ymax= (upper_CI)), alpha=0.2) + xlab("Value of V") + ylab("Relative Risk")  + geom_line(data = data.frame(V = V, RR = (out$RR)),  aes(x = V, y = (RR)), color = "blue")
+
+ggplot(df, aes(x = V, y = (RR))) + geom_line() + geom_ribbon(aes(ymin= (lower_CI), ymax= (upper_CI)), alpha=0.2) + xlab("Value of V") + ylab("Relative Risk")  + geom_line(data = data.frame(V = V, RR = inference$RR_targeted),  aes(x = V, y = (RR)), color = "red") 
+```
+
+
+```{r, include = F}
+data <- sim(setD, n = 7500)
+
+Y <- data$R
+A <- data$A
+V <- as.matrix(data[, c("W1")])
+X <- as.matrix(data[, c("W1", "W2", "W3")])
+
+
+out <- npRR(V,X,A,Y, basis_list = make_fourier_basis_list(V),
+            library_V =   make_pkg_SL_learner("SL.xgboost" , max_depth = 6, family = binomial(), outcome_type = variable_type("binomial")),
+            , cv_RR = F,   library_RR = list(SL_learner_to_LRR_learner("SL.xgboost",  max_depth = 4)))
+```
+
+
+```{r}
+n <- 100000
+X <- 5*runif(n)
+Y<- rnorm(n , mean = X, sd = 0.3)
+plot(X,Y)
+fit <- isoreg(X,Y)
+Ypred <- fit$yf[Matrix::invPerm(fit$ord)]
+plot(X, Ypred)
+
+weight <- exp(X)*X + X^2 - sin(5*X)
+score <- weight*(Y - Ypred)
+mean(score/ sd(score))
+print(1/sqrt(n)/log(n))
+
+```
+ 
+
+
+```{r}
+library(ggplot2)
+kernel_function <- function(x,y, sigma) {
+  l <- min(x)
+  u <- max(x)
+   
+  if(min(y -  2.25*sigma - l, u - (y+  2.25*sigma)) < 0) {
+    sigma <- min(min(y-l, u - y)/2.25 )
+  }
+   v <- exp(-(y-x)^2/(2*sigma^2)) /  sqrt(2*3.14*sigma^2)
+}
+inference <- npRR_inference(out, npoints = 50, min_samples = 150 )
+df <- as.data.frame(inference$estimates)
+df
+ggplot(df, aes(x = V, y = (RR))) + geom_line() + geom_ribbon(aes(ymin= (lower_CI), ymax= (upper_CI)), alpha=0.2) + xlab("Value of V") + ylab("Relative Risk")  
+
+
+ggplot(df, aes(x = V, y =  (RR))) + geom_line() + geom_ribbon(aes(ymin=  (lower_CI), ymax=  (upper_CI)), alpha=0.2) + xlab("Value of V") + ylab("Relative Risk")  + geom_line(data = data.frame(V = data_full$W1, RR = RR_true),  aes(x = V, y =  (RR)), color = "blue")  + geom_line(data = data.frame(V = V, RR = out$RR),  aes(x = V, y =  (RR)), color = "red")
+
+ggplot(df, aes(x = V, y =  log(RR))) + geom_line() + geom_ribbon(aes(ymin=  log(lower_CI), ymax=  log(upper_CI)), alpha=0.2) + xlab("Value of V") + ylab("Relative Risk")  + geom_line(data = data.frame(V = data_full$W1, RR = RR_true),  aes(x = V, y =  log(RR)), color = "blue")  + geom_line(data = data.frame(V = V, RR = out$RR),  aes(x = V, y =  log(RR)), color = "red")
+```
+
+
+```{r}
+
 
 
 ```
 
 
 ```{r}
-out <- npRR(V,X,A,Y, lrnr_V =   make_learner(Lrnr_pkg_SuperLearner,"SL.gam" , deg.gam = 3, family = binomial(), outcome_type = variable_type("binomial")),
-, cv_RR = F, lrnr_A = Lrnr_xgboost$new(max_depth = 5), lrnr_Y = Lrnr_xgboost$new(max_depth = 5), RR_learners = list(
-  "gam_4" = SL_learner_to_LRR_learner("SL.gam", deg.gam = 4)))
+passes <- c()
+for(i in 1:100) {
+n <-  500
+# hard_additive
+theta = function(W1,W2,W3) {( 1.2*W1^2 + 1/(3+ W1) + 0.1*W1)}
+D <- DAG.empty()
+theta <- Vectorize(theta)
+
+key <- "hard_additive"
+D <- D +
+  node("W1", distr = "runif", min = -1, max = 1) +
+  node("W2", distr = "runif", min = -1, max = 1) +
+  node("W3", distr = "runif", min = -1, max = 1) +
+  node("g", distr = "rconst", const = 0.15 + 0.75*plogis(cos((W1+W2 + W3)*5) * sin((W1+W2 + W3)*5) + cos((W1+W2 + W3)*5) + sin((W1+W2 + W3)*5) + sin(W1*5) + W1*sin(W1*5) + cos(W2*5) + 2*W1*W2 - sin(W3*5) + sin(5*W1*W3) + 2*W1*W2*W3 + W3*sin(W1*5) + cos(W2*4)*sin(W1*5) ) ) +
+  node("A", distr = "rbinom", size = 1, prob = g )+
+  node("phi", distr = "rconst", const = (1+W1 + W2)*sin(W1*5)  + (1+W2 + W3)*cos(5*W2) + 0.5*exp(W1*W2) + cos(6*W1*W3)+ sin(6*W3*W2) + sin(6*W1*W2) + W3*sin(5*W3) + W2*sin(5*W3)) +
+  node("theta", distr = "rconst", const =  theta(W1,W2,W3))+
+  node("gRtilde0", distr = "rconst",  const = (-(exp(theta) + 1)*exp(phi) + (exp(2*phi)*(exp(theta) + 1)^2 + 4*(exp(theta + phi))*(1 - exp(phi)))^(0.5))/(2*exp(theta)*(1-exp(phi)))
+  ) +
+  node("gRtilde1", distr = "rconst",  const =    gRtilde0*exp(theta)) +
+  node("gRtilde", distr = "rconst",  const =   A*gRtilde1 + (1-A)*gRtilde0) +
+  node("gR", distr = "rconst",  const =  gRtilde ) +
+  node("R", distr = "rbinom", size = 1, prob = gR)+
+  node("RR", distr = "rconst", const = gRtilde1/gRtilde0)
+
+setD <- set.DAG(D, vecfun = c("bound", "round", "theta"))
+data <- sim(setD, n = n)
+
+Y <- data$R
+A <- data$A
+V <- as.matrix(data[, c("W1")])
+X <- as.matrix(data[, c("W1", "W2", "W3")])
+
+
+
+out <- npRR(V,X,A,Y, library_V =   make_learner(Lrnr_pkg_SuperLearner,"SL.gam" , deg.gam = 3, family = binomial(), outcome_type = variable_type("binomial")),
+            , cv_RR = F, library_A = Lrnr_xgboost$new(max_depth = 5), library_Y = Lrnr_xgboost$new(max_depth = 5), library_RR = list(
+              "gam_4" = SL_learner_to_LRR_learner("SL.gam", deg.gam = 4)))
 
 inference <- npRR_inference(out)
+kern_fun <- function(x){exp(-(-0.75-x)^2/(2*0.001^2)) /  sqrt(2*3.14*0.001^2)}
+
+lower <- inference$estimates[,3]
+upper <- inference$estimates[,4]
+print(inference$estimates)
+print(true)
+passes <- c(passes, true <= upper && true >= lower)
+print(table(passes))
+print(mean(passes))
+}
 ```
 
-```{r}
-tska <- sl3_Task$new(data, covariates = "W1", outcome = "gRtilde0")
-out$learner_LRR_trained_squashed$fit_object$learner_fits$Lrnr_selector$fit_object
- preds <- out$learner_LRR_trained_squashed$fit_object$learner_fits$Stack$predict(out$task_RR)
-preds
-lrr_true <- log(lrnr1$predict(tska) / lrnr0$predict(tska))
-length(lrr_true)
-
-apply((preds - lrr_true)^2,2, mean)
-```
+ 
 
 
 ```{r}
 
-data_full <- sim(setD, n = 150000)
+data_full <- sim(setD, n = 100000)
 tsk1 <- sl3_Task$new(data_full, covariates = "W1", outcome = "gRtilde1")
-lrnr  <-  Lrnr_xgboost$new(max_depth = 7)
+lrnr  <-  Pipeline$new(Lrnr_cv$new(Stack$new(
+  Lrnr_xgboost$new(max_depth = 6),   Lrnr_xgboost$new(max_depth = 5),   Lrnr_xgboost$new(max_depth = 7),  Lrnr_xgboost$new(max_depth = 4), Lrnr_gam$new()
+)), Lrnr_cv_selector$new(loss_loglik_binomial))
+
 lrnr1 <- lrnr$train(tsk1)
 tsk1 <- sl3_Task$new(data, covariates = "W1", outcome = "gRtilde1")
 
 tsk0 <- sl3_Task$new(data_full, covariates = "W1", outcome = "gRtilde0")
-lrnr0 <- Lrnr_xgboost$new(max_depth = 7)
+lrnr0 <- Lrnr_xgboost$new(max_depth = 5)
 lrnr0 <- lrnr$train(tsk0)
 
 tsk <- tsk0
 tska <- sl3_Task$new(data, covariates = "W1", outcome = "gRtilde0")
+
+RR_true <- lrnr1$predict(tsk0)/lrnr0$predict(tsk0)
+true <- exp(mean(kern_fun(data_full$W1) * log(RR_true)) / mean(kern_fun(data_full$W1)))
 ```
 
 
@@ -154,10 +263,10 @@ for(i in 1:200) {
   basis_list <- make_fourier_basis_list(V)
   
   lrnr <- SL_learner_to_LRR_learner("SL.gam", deg.gam = 3)
-   
+  
   lrnr_lrr <- generate_plugin_learners(task_RR, basis_list, list(lrnr), task, likelihood, select_sieve = TRUE, screen.glmnet = F, cv = F)
- 
-      
+  
+  
   lrnr_lrr <- lrnr_lrr$train(task_RR)
   preds <- lrnr_lrr$predict(task_RR)
   print(cor(preds, V))

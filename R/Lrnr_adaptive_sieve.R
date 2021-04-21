@@ -1,5 +1,5 @@
 
-#' @export
+
 Lrnr_adaptive_sieve <- R6Class(
   classname = "Lrnr_adaptive_sieve", inherit = Lrnr_base,
   portable = TRUE, class = TRUE,

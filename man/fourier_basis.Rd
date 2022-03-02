@@ -28,8 +28,8 @@ Object that computes Fourier basis matrix
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-new}{\code{fourier_basis$new()}}
-\item \href{#method-train}{\code{fourier_basis$train()}}
-\item \href{#method-predict}{\code{fourier_basis$predict()}}
+\item \href{#method-set}{\code{fourier_basis$set()}}
+\item \href{#method-eval}{\code{fourier_basis$eval()}}
 \item \href{#method-clone}{\code{fourier_basis$clone()}}
 }
 }
@@ -38,25 +38,25 @@ Object that computes Fourier basis matrix
 \if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$new(orders = c(3, 0, 0), max_degrees = c(1, 2, 3), ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$new(orders = c(3, 0, 0), ...)}\if{html}{\out{</div>}}
 }
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-train"></a>}}
-\if{latex}{\out{\hypertarget{method-train}{}}}
-\subsection{Method \code{train()}}{
+\if{html}{\out{<a id="method-set"></a>}}
+\if{latex}{\out{\hypertarget{method-set}{}}}
+\subsection{Method \code{set()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$train(X)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$set(X)}\if{html}{\out{</div>}}
 }
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-predict"></a>}}
-\if{latex}{\out{\hypertarget{method-predict}{}}}
-\subsection{Method \code{predict()}}{
+\if{html}{\out{<a id="method-eval"></a>}}
+\if{latex}{\out{\hypertarget{method-eval}{}}}
+\subsection{Method \code{eval()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$predict(X)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$eval(X)}\if{html}{\out{</div>}}
 }
 
 }
@@ -82,8 +82,8 @@ The objects of this class are cloneable with this method.
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-new}{\code{fourier_basis$new()}}
-\item \href{#method-train}{\code{fourier_basis$train()}}
-\item \href{#method-predict}{\code{fourier_basis$predict()}}
+\item \href{#method-set}{\code{fourier_basis$set()}}
+\item \href{#method-eval}{\code{fourier_basis$eval()}}
 \item \href{#method-clone}{\code{fourier_basis$clone()}}
 }
 }
@@ -92,25 +92,25 @@ The objects of this class are cloneable with this method.
 \if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$new(orders = c(3, 0, 0), max_degrees = c(1, 2, 3), ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$new(orders = c(3, 0, 0), ...)}\if{html}{\out{</div>}}
 }
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-train"></a>}}
-\if{latex}{\out{\hypertarget{method-train}{}}}
-\subsection{Method \code{train()}}{
+\if{html}{\out{<a id="method-set"></a>}}
+\if{latex}{\out{\hypertarget{method-set}{}}}
+\subsection{Method \code{set()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$train(X)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$set(X)}\if{html}{\out{</div>}}
 }
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-predict"></a>}}
-\if{latex}{\out{\hypertarget{method-predict}{}}}
-\subsection{Method \code{predict()}}{
+\if{html}{\out{<a id="method-eval"></a>}}
+\if{latex}{\out{\hypertarget{method-eval}{}}}
+\subsection{Method \code{eval()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$predict(X)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{fourier_basis$eval(X)}\if{html}{\out{</div>}}
 }
 
 }

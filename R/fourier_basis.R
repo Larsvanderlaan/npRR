@@ -19,16 +19,16 @@ fourier_basis <- R6Class(
   classname = "fourier_basis",
   portable = TRUE, class = TRUE,
   public = list(
-    initialize = function( orders = c(3,0,0), max_degrees = c(1,2,3),  ...) {
+    initialize = function( orders = c(3,0,0),  ...) {
       # learner is an already initialized learner
       params <- list(
-        max_degrees = max_degrees, orders = orders,
+        max_degrees = 1:10, orders = orders,
         ...
       )
       private$.params <- params
 
     },
-    train = function(X) {
+    set = function(X) {
       order <- max(self$params$orders)
       nbasis <- order*2+1
       remove <- NULL
@@ -57,7 +57,7 @@ fourier_basis <- R6Class(
       private$.remove <- remove
       return(self)
     },
-    predict = function(X) {
+    eval = function(X) {
       remove <- private$.remove
       max_degrees <- self$params$max_degrees
       orders <- self$params$orders
@@ -117,7 +117,7 @@ fourier_basis <- R6Class(
   ),
   active = list(
     name = function() {
-      "fourier_basis"
+      paste0("fourier_basis", self$params$orders, collapse = "_")
     },
     params = function(){
       private$.params

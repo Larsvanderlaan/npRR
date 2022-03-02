@@ -52,19 +52,22 @@ fourier_basis <- R6Class(
         basis_list[[name]] <- basis
       }
       private$.basis_list <- basis_list
-      data <- self$predict(X)
+      data <- self$eval(X)
       remove <- which(abs(apply(data, 2, sd))<1e-6)[-1]
       private$.remove <- remove
       return(self)
     },
     eval = function(X) {
+
       remove <- private$.remove
       max_degrees <- self$params$max_degrees
       orders <- self$params$orders
 
       X <- as.matrix(X)
       basis_list <- private$.basis_list
+
       var_names <- names(basis_list)
+
       nbasis_per_var <- ncol(as.matrix(fda::eval.basis(X[,var_names[[1]]], basis_list[[var_names[[1]]]])))
       indices <- 1:nbasis_per_var
       basis_names <- lapply(var_names, function(var) { paste0(var, indices)})
@@ -117,7 +120,7 @@ fourier_basis <- R6Class(
   ),
   active = list(
     name = function() {
-      paste0("fourier_basis", self$params$orders, collapse = "_")
+      paste0("fourier_basis_", paste0(self$params$orders, collapse = "_"))
     },
     params = function(){
       private$.params

@@ -1,3 +1,0 @@
-"0","lrnr_sieve <- Lrnr_adaptive_sieve$new(basis_generator = basis_list[[3]],mult_by = c(""Qg1"", ""Qg0""))"
-"0","lrr_IPW <- LRR_IPW_task_generator$new(sieve_learner = lrnr_sieve, name = ""j"")"
-"0","lrr_IPW <- lrr_IPW$train(task_RR)"

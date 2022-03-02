@@ -155,18 +155,18 @@ estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Lea
    
   covariates <- colnames(data)
   if(learning_method == "plugin") {
-    psuedo_outcome <- EY1 / (EY1 + EY0)
+    pseudo_outcome <- EY1 / (EY1 + EY0)
     pseudo_weights <- weights * (EY1 + EY0)
-    data$psuedo_outcome <- psuedo_outcome
+    data$pseudo_outcome <- pseudo_outcome
     data$pseudo_weights <- pseudo_weights
-    task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "psuedo_outcome", weights = "pseudo_weights", outcome_type = "binomial")
+    task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "binomial")
   }
   else if(learning_method == "IPW") {
-    psuedo_outcome <- A
+    pseudo_outcome <- A
     pseudo_weights <- Y / ifelse(A==1, pA1, 1 - pA1)
-    data$psuedo_outcome <- psuedo_outcome
+    data$pseudo_outcome <- pseudo_outcome
     data$pseudo_weights <- pseudo_weights
-    task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "psuedo_outcome", weights = "pseudo_weights", outcome_type = "binomial")
+    task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "binomial")
   }
   task_LRR_pred <- sl3_Task$new(as.data.table(Wpred), covariates = covariates)
   
@@ -174,7 +174,7 @@ estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Lea
   LRR <- sl3_Learner_LRR_trained$predict(task_LRR)
   LRR_pred <- sl3_Learner_LRR_trained$predict(task_LRR_pred)
   
-  output <- list(LRR_train = LRR, LRR_pred = LRR_pred, LRR_learner = sl3_Learner_LRR_trained)
+  output <- list(LRR_train = as.matrix(LRR), LRR_pred = as.matrix(LRR_pred), LRR_learner = sl3_Learner_LRR_trained)
   return(output)
 }
 
@@ -267,16 +267,12 @@ pA1 <- likelihood$pA1
 # 3 additive/main-term sieves up to order 3
 list_of_sieves <- list(
   NULL,
-  fourier_basis$new(orders = 1),
-   fourier_basis$new(orders = 2),
-   fourier_basis$new(orders = c(1,1)),
   fourier_basis$new(orders = c(2,1))
 )
 list_of_learners <- list(
-  Lrnr_glm$new(family = binomial()),
-  Lrnr_gam$new(family = binomial())
+  Lrnr_hal9001$new(max_degree = 1, smoothness_orders = 1, num_knots = 2, lambda = c(0.0001, 0.0005, 0.001, 0.1), fit_control = list(cv_select = FALSE) , family = binomial())
 )
-
+#list_of_learners <- list(Lrnr_glm$new(family = binomial()))
 folds <- origami::make_folds(n=length(A))
 
  
@@ -287,6 +283,9 @@ LRR_learners_by_fold <- unlist(LRR_learners_by_fold)
 learner_sieve_names <- names(LRR_learners_by_fold)
 LRR_learners_by_fold_delayed <- bundle_delayed(LRR_learners_by_fold)
 LRR_learners_by_fold <- LRR_learners_by_fold_delayed$compute()
+lapply(LRR_learners_by_fold, function(item) {
+  names(item) <- c("LRR_train", "LRR_pred", "LRR_learner")
+})
 #names(LRR_learners_by_fold) <- learner_sieve_names
 ```
 
@@ -306,15 +305,16 @@ output <- lapply(seq_along(folds), function(fold_number) {
       all_LRR_training <- lapply(sieve_learners, `[[`, "LRR_train")
       training_index <- origami::training(fold = fold)
       # Get DR risks on fold-specific training set for the LRR of the sieves
-      all_training_risks <- lapply(all_LRR_training, function(LRR) {
+      all_training_risks <- unlist(lapply(all_LRR_training, function(LRR) {
         DR_risk_function_LRR(LRR, A[training_index], Y[training_index], EY1[training_index], EY0[training_index], pA1[training_index], weights[training_index])
-      })
+      }))
       print(all_training_risks)
-      best_index <- which.min(all_training_risks)
-      print(names(all_training_risks)[best_index])
-      out <- list(sieve_learners[[best_index]])
-      names(out) <- names(all_training_risks)[best_index] 
-      return(out)
+      best_index <- as.numeric(seq_along(all_training_risks) == which.min(all_training_risks))
+      names(best_index) <- names(all_training_risks)
+      #print(names(all_training_risks)[best_index])
+      #out <- list(sieve_learners[[best_index]])
+      #names(out) <- names(all_training_risks)[best_index] 
+      return(best_index)
  
        
   })
@@ -325,11 +325,12 @@ output <- lapply(seq_along(folds), function(fold_number) {
 names(output) <- seq_along(folds)
 
 # TODO CV selection
+# TODO matrix valued learners
 cv_fun <- function(fold) {
   v <- origami::fold_index(fold = fold)
   lapply(output[[v]])
 }
-origami::cross_validate()
+ 
 ```
 
 ```{r}

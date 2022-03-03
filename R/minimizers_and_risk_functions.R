@@ -1,4 +1,25 @@
-estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Learner_binomial, learning_method = c("plugin", "IPW"), Wpred = W, untransform_logit = TRUE) {
+
+
+#' Estimates the log relative risk function using a user-supplied binomial sl3 Learner object using either the IPW or plugin empirical risk function.
+#' @param W A matrix of covariate observations
+#' @param A A binary vector specifying the treatment assignment. The values should be in {0,1}.
+#' @param Y A numeric vector of binary or nonnegative observations of the outcome variable.
+#' @param EY1 A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
+#' @param EY0 A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
+#' @param pA1 A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
+#' @param weights A numeric vector of observation weights. If no special weighting desired, supply a vector of 1's.
+#' @param  sl3_LRR_Learner_binomial A \code{sl3_Learner} object that minimizes the binomial/logistic risk function.
+#' This function will automatically add a `family = binomial()` parameter to the internal params of the inputted \code{sl3_Learner}.
+#' If the learner predicts the predictions at the probability scale (i.e. expit transform of link predictor) then set the argument `logit_transform = TRUE` (default). (Almost all Learners do this by default)
+#' If the learner predicts the link predictor then set the argument `logit_transform = TRUE`.
+#' Note to users familiar with \code{sl3}: if `learning_method = "plugin"`, the outcome_type of the sl3_Task is `quasibinomial`. Therefore, a family object should be passed to the learner to ensure the outcome type is correct.
+#' @param learning_method A string being either "plugin" or "IPW". Whether the LRR should be estimated by minimizing the plugin or IPW empirical risk function.
+#' @param Wpred A matrix of covariates observations at which to predict the LRR. By default, \code{Wpred} equals \code{W}.
+#' @param logit_transform An internal argument specifying whether the predictions of \code{sl3_LRR_Learner_binomial} should be logit-transformed.
+#' This argument is needed since the LRR predictions correspond with the logit-scale predictor and not probability-scale predictions of the binomial learner.
+#' For most \code{sl3_Learner}s, the default `logit_transform = TRUE` is necessary for this method to work correctly.
+estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Learner_binomial, learning_method = c("plugin", "IPW"), Wpred = W, logit_transform = TRUE) {
+
   learning_method <- match.arg(learning_method)
   data <- as.data.table(W)
 
@@ -8,6 +29,9 @@ estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Lea
     pseudo_weights <- weights * (EY1 + EY0)
     data$pseudo_outcome <- pseudo_outcome
     data$pseudo_weights <- pseudo_weights
+    params <- sl3_LRR_Learner_binomial$params
+    params$family <- binomial()
+    sl3_LRR_Learner_binomial <- sl3_LRR_Learner_binomial$reparameterize(params)
     task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "quasibinomial")
   }
   else if(learning_method == "IPW") {
@@ -22,7 +46,7 @@ estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Lea
   sl3_Learner_LRR_trained <- sl3_LRR_Learner_binomial$train(task_LRR)
   LRR <- sl3_Learner_LRR_trained$predict(task_LRR)
   LRR_pred <- sl3_Learner_LRR_trained$predict(task_LRR_pred)
-  if(untransform_logit) {
+  if(logit_transform) {
     LRR <- qlogis(LRR)
     LRR_pred <- qlogis(LRR_pred)
   }
@@ -31,8 +55,18 @@ estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Lea
   return(output)
 }
 
-
-
+#' The double-robust one-step efficient empirical risk function for the log relative risk.
+#' Note this risk function is non-convex.
+#' @param LRR A vector or matrix of log relative risk (LRR) estimates whose risk is to be evaluated using the one-step efficient double-robust risk function.
+#' @param W A matrix of covariate observations
+#' @param A A binary vector specifying the treatment assignment. The values should be in {0,1}.
+#' @param Y A numeric vector of binary or nonnegative observations of the outcome variable.
+#' @param EY1 A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
+#' @param EY0 A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
+#' @param pA1 A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
+#' @param weights A numeric vector of observation weights. If no special weighting desired, supply a vector of 1's.
+#' @param debug ...
+#' @param return_loss Boolean for whether to return loss function values or the risk value (i.e. average of the losses)
 DR_risk_function_LRR <- function(LRR, A, Y, EY1, EY0, pA1, weights, debug = FALSE, return_loss = FALSE) {
   LRR <- as.matrix(LRR)
   if(!(nrow(LRR) == length(A) && nrow(LRR) == length(EY1))) {

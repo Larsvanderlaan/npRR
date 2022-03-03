@@ -10,10 +10,12 @@ RoxygenNote: 7.1.2
 Imports: 
   sl3,
   SuperLearner,
-  tmle3,
   stats,
   data.table,
-  R6
+  R6,
+  stringr,
+  origami,
+  delayed
 Suggests:
   glmnet,
   hal9001,

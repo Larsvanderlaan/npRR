@@ -102,14 +102,14 @@ list_of_sieves <- list(
   fourier_basis$new(orders = c(2,1))
 )
 list_of_learners <- list(
-  Lrnr_gam$new(family = binomial()),
-  Lrnr_xgboost$new(max_depth = 5, objective = "reg:logistic" ),
-  Lrnr_hal9001$new(max_degree = 2, smoothness_orders = 1, num_knots = c(8,5), lambda = c(0.0005), fit_control = list(cv_select = FALSE) , family = binomial())
+  #Lrnr_gam$new(family = binomial())#,
+  #Lrnr_xgboost$new(max_depth = 5, objective = "reg:logistic" ),
+  Lrnr_hal9001$new(max_degree = 2, smoothness_orders = 1, num_knots = c(8,5), lambda = c(0.0005, 0.01), fit_control = list(cv_select = FALSE) , family = binomial())
 )
 learner_names <- sapply(list_of_learners, `[[`, "name")
 
 
-full_fit_LRR <- train_LRR_learners(W, A, Y, EY1, EY0, pA1, weights, list_of_learners, list_of_sieves, Wpred = W) 
+full_fit_LRR <- train_LRR_learners(V=W, A, Y, EY1, EY0, pA1, weights, list_of_learners, list_of_sieves, Vpred = W) 
 all_LRR_full_best <- subset_best_sieve(full_fit_LRR, learner_names, A, Y, EY1, EY0, pA1, weights)
 #all_LRR_full <- do.call(cbind, lapply(full_fit_LRR, `[[`, "LRR_train"))
 
@@ -119,7 +119,7 @@ folds <- origami::make_folds(n=length(A))
  
  
 
-LRR_learners_by_fold <- lapply(folds, train_LRR_learners_using_fold, W, A, Y, EY1, EY0, pA1, weights, list_of_learners, list_of_sieves )
+LRR_learners_by_fold <- lapply(folds, train_LRR_learners_using_fold,   W, A, Y, EY1, EY0, pA1, weights, list_of_learners, list_of_sieves )
 names(LRR_learners_by_fold) <- seq_along(folds)
 LRR_learners_by_fold <- unlist(LRR_learners_by_fold)
 learner_sieve_names <- names(LRR_learners_by_fold)

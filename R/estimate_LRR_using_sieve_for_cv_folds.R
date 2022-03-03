@@ -1,32 +1,33 @@
 
 #' Train the LRR learners for all sieves and base learners on the training set specified by a fold object.
 #' @param fold \code{fold} object from the \link{origami} package specifying the fold-specific training set at which to estimate the LRR.
-#' @param W A matrix of covariate observations. This should include all observations including both the training and validation observations.
+#' @param V A matrix of observations of a subset of the covariates `W` for which to estimate the (possibly semi-marginalized) log relative risk (LRR).
+#'  This should include all observations including both the training and validation observations.
 #' @param A A binary vector specifying the treatment assignment. The values should be in {0,1}.
 #' This should include all observations including both the training and validation observations.
 #' @param Y A numeric vector of binary or nonnegative observations of the outcome variable.
 #' This should include all observations including both the training and validation observations.
-#' @param EY1 A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
-#' @param EY0 A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
-#' @param pA1 A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
+#' @param EY1W A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
+#' @param EY0W A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
+#' @param pA1W A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
 #' @param weights A numeric vector of observation weights. If no special weighting desired, supply a vector of 1's.
 #' @param list_of_LRR_learners A list of untrained \code{sl3_Learner} objects to be used to estimate the log relative risk LRR using the function \link{estimate_LRR_using_ERM}.
 #' @param list_of_sieves A list of basis_generator objects specifying the sieve. See, for example, \code{fourier_basis} for an example and template.
-train_LRR_learners_using_fold <- function(fold, W, A, Y, EY1, EY0, pA1, weights, list_of_LRR_learners, list_of_sieves) {
+train_LRR_learners_using_fold <- function(fold, V, A, Y, EY1W, EY0W, pA1W, weights, list_of_LRR_learners, list_of_sieves) {
   list_of_learners <- list_of_LRR_learners
   index <- origami::training(fold = fold)
   index_val <- origami::validation(fold = fold)
-  Wfull <- W
-  W <- Wfull[index,]
-  Wval <- Wfull[index_val,]
+  Vfull <- V
+  V <- Vfull[index,]
+  Vval <- Vfull[index_val,]
   A <- A[index]
   Y <- Y[index]
-  EY1 <- EY1[index]
-  EY0 <- EY0[index]
-  pA1 <- pA1[index]
+  EY1W <- EY1W[index]
+  EY0W <- EY0W[index]
+  pA1W <- pA1W[index]
   weights <- weights[index]
 
-  all_learners_delayed <- train_LRR_learners(W, A, Y, EY1, EY0, pA1, weights, list_of_learners, list_of_sieves, Wpred = Wval, compute = FALSE)
+  all_learners_delayed <- train_LRR_learners(V, A, Y, EY1W, EY0W, pA1W, weights, list_of_learners, list_of_sieves, Vpred = Vval, compute = FALSE)
   return(all_learners_delayed)
 }
 
@@ -38,18 +39,18 @@ train_LRR_learners_using_fold <- function(fold, W, A, Y, EY1, EY0, pA1, weights,
 #' This should include all observations including both the training and validation observations.
 #' @param Y A numeric vector of binary or nonnegative observations of the outcome variable.
 #' This should include all observations including both the training and validation observations.
-#' @param EY1 A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
-#' @param EY0 A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
-#' @param pA1 A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
+#' @param EY1W A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
+#' @param EY0W A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
+#' @param pA1W A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
 #' @param weights A numeric vector of observation weights. If no special weighting desired, supply a vector of 1's.
-subset_best_sieve_all_folds <- function(folds, trained_LRR_learner_list, learner_names, A, Y, EY1, EY0, pA1, weights) {
+subset_best_sieve_all_folds <- function(folds, trained_LRR_learner_list, learner_names, A, Y, EY1W, EY0W, pA1W, weights) {
   trained_learner_list <- trained_LRR_learner_list
   output <- lapply(seq_along(folds), function(fold_number) {
     fold <- folds[[fold_number]]
     training_index <- origami::training(fold = fold)
     keep <- which(stringr::str_detect(names(LRR_learners_by_fold), paste0("^", fold_number, "\\.", "+")))
     LRR_learners <- LRR_learners_by_fold[keep]
-    LRR_learners <- subset_best_sieve(LRR_learners, learner_names, A[training_index], Y[training_index], EY1[training_index], EY0[training_index], pA1[training_index], weights[training_index])
+    LRR_learners <- subset_best_sieve(LRR_learners, learner_names, A[training_index], Y[training_index], EY1W[training_index], EY0W[training_index], pA1W[training_index], weights[training_index])
 
     return(LRR_learners)
 

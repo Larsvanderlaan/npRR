@@ -1,12 +1,12 @@
 
 
 #' Estimates the log relative risk function using a user-supplied binomial sl3 Learner object using either the IPW or plugin empirical risk function.
-#' @param W A matrix of covariate observations
+#' @param V A matrix of observations of a subset of the covariates `W` for which to estimate the (possibly semi-marginalized) log relative risk (LRR).
 #' @param A A binary vector specifying the treatment assignment. The values should be in {0,1}.
 #' @param Y A numeric vector of binary or nonnegative observations of the outcome variable.
-#' @param EY1 A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
-#' @param EY0 A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
-#' @param pA1 A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
+#' @param EY1W A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
+#' @param EY0W A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
+#' @param pA1W A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
 #' @param weights A numeric vector of observation weights. If no special weighting desired, supply a vector of 1's.
 #' @param  sl3_LRR_Learner_binomial A \code{sl3_Learner} object that minimizes the binomial/logistic risk function.
 #' This function will automatically add a `family = binomial()` parameter to the internal params of the inputted \code{sl3_Learner}.
@@ -14,19 +14,19 @@
 #' If the learner predicts the link predictor then set the argument `logit_transform = TRUE`.
 #' Note to users familiar with \code{sl3}: if `learning_method = "plugin"`, the outcome_type of the sl3_Task is `quasibinomial`. Therefore, a family object should be passed to the learner to ensure the outcome type is correct.
 #' @param learning_method A string being either "plugin" or "IPW". Whether the LRR should be estimated by minimizing the plugin or IPW empirical risk function.
-#' @param Wpred A matrix of covariates observations at which to predict the LRR. By default, \code{Wpred} equals \code{W}.
+#' @param Vpred A matrix of covariates observations at which to predict the LRR. By default, \code{Vpred} equals \code{W}.
 #' @param logit_transform An internal argument specifying whether the predictions of \code{sl3_LRR_Learner_binomial} should be logit-transformed.
 #' This argument is needed since the LRR predictions correspond with the logit-scale predictor and not probability-scale predictions of the binomial learner.
 #' For most \code{sl3_Learner}s, the default `logit_transform = TRUE` is necessary for this method to work correctly.
-estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Learner_binomial, learning_method = c("plugin", "IPW"), Wpred = W, logit_transform = TRUE) {
+estimate_LRR_using_ERM <- function(V, A, Y,  EY1W, EY0W, pA1W, weights, sl3_LRR_Learner_binomial, learning_method = c("plugin", "IPW"), Vpred = W, logit_transform = TRUE) {
 
   learning_method <- match.arg(learning_method)
-  data <- as.data.table(W)
+  data <- as.data.table(V)
 
   covariates <- colnames(data)
   if(learning_method == "plugin") {
-    pseudo_outcome <- EY1 / (EY1 + EY0)
-    pseudo_weights <- weights * (EY1 + EY0)
+    pseudo_outcome <- EY1W / (EY1W + EY0W)
+    pseudo_weights <- weights * (EY1W + EY0W)
     data$pseudo_outcome <- pseudo_outcome
     data$pseudo_weights <- pseudo_weights
     params <- sl3_LRR_Learner_binomial$params
@@ -36,12 +36,12 @@ estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Lea
   }
   else if(learning_method == "IPW") {
     pseudo_outcome <- A
-    pseudo_weights <- weights * Y / ifelse(A==1, pA1, 1 - pA1)
+    pseudo_weights <- weights * Y / ifelse(A==1, pA1W, 1 - pA1W)
     data$pseudo_outcome <- pseudo_outcome
     data$pseudo_weights <- pseudo_weights
     task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "binomial")
   }
-  task_LRR_pred <- sl3_Task$new(as.data.table(Wpred), covariates = covariates)
+  task_LRR_pred <- sl3_Task$new(as.data.table(Vpred), covariates = covariates)
 
   sl3_Learner_LRR_trained <- sl3_LRR_Learner_binomial$train(task_LRR)
   LRR <- sl3_Learner_LRR_trained$predict(task_LRR)
@@ -61,20 +61,20 @@ estimate_LRR_using_ERM <- function(W, A, Y,  EY1, EY0, pA1, weights, sl3_LRR_Lea
 #' @param W A matrix of covariate observations
 #' @param A A binary vector specifying the treatment assignment. The values should be in {0,1}.
 #' @param Y A numeric vector of binary or nonnegative observations of the outcome variable.
-#' @param EY1 A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
-#' @param EY0 A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
-#' @param pA1 A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
+#' @param EY1W A numeric vector containing initial cross-fitted estimates of E[Y|A=1,W] for all observations.
+#' @param EY0W A numeric vector containing initial cross-fitted estimates of E[Y|A=0,W] for all observations.
+#' @param pA1W A numeric vector containing initial cross-fitted estimates of P(A=1|W) for all observations.
 #' @param weights A numeric vector of observation weights. If no special weighting desired, supply a vector of 1's.
 #' @param debug ...
 #' @param return_loss Boolean for whether to return loss function values or the risk value (i.e. average of the losses)
-DR_risk_function_LRR <- function(LRR, A, Y, EY1, EY0, pA1, weights, debug = FALSE, return_loss = FALSE) {
+DR_risk_function_LRR <- function(LRR, A, Y, EY1W, EY0W, pA1W, weights, debug = FALSE, return_loss = FALSE) {
   LRR <- as.matrix(LRR)
-  if(!(nrow(LRR) == length(A) && nrow(LRR) == length(EY1))) {
+  if(!(nrow(LRR) == length(A) && nrow(LRR) == length(EY1W))) {
     stop("Input lengths dont match")
   }
-  EY <- ifelse(A==1, EY1, EY0)
-  plugin_risk <- (EY0 + EY1) * log(1 + exp(LRR)) - EY1 * LRR
-  score_comp <- (A/pA1)*(log(1 + exp(LRR)) - LRR)*(Y - EY) + ((1-A)/(1-pA1))*(log(1 + exp(LRR)) - LRR)*(Y - EY)
+  EY <- ifelse(A==1, EY1W, EY0W)
+  plugin_risk <- (EY0W + EY1W) * log(1 + exp(LRR)) - EY1W * LRR
+  score_comp <- (A/pA1W)*(log(1 + exp(LRR)) - LRR)*(Y - EY) + ((1-A)/(1-pA1W))*(log(1 + exp(LRR)) - LRR)*(Y - EY)
   if(debug){
     print(colMeans(weights * score_comp))
   }

@@ -102,7 +102,7 @@ list_of_sieves <- list(
   fourier_basis$new(orders = c(2,1))
 )
 list_of_learners <- list(
-  #Lrnr_gam$new(family = binomial())#,
+   Lrnr_gam$new(family = binomial()) ,
   #Lrnr_xgboost$new(max_depth = 5, objective = "reg:logistic" ),
   Lrnr_hal9001$new(max_degree = 2, smoothness_orders = 1, num_knots = c(8,5), lambda = c(0.0005, 0.01), fit_control = list(cv_select = FALSE) , family = binomial())
 )
@@ -160,6 +160,13 @@ best_learner_index_cv <- which.min(DR_risk_function_LRR(cv_predictions, A , Y, E
 ```{r}
  best_learner_index_cv
 DR_risk_function_LRR(cv_predictions, A , Y, EY1, EY0, pA1, weights)
+tmp <- lapply(all_LRR_full_best, `[[`, "LRR_pred")
+tmp_names <-  names(all_LRR_full_best)
+all_LRR_full_predictions <- do.call(cbind, tmp)
+colnames
+dim(all_LRR_full_predictions)
+dim(cv_predictions)
+  
 ```
 
 

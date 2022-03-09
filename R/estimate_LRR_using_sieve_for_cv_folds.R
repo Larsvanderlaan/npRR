@@ -59,3 +59,20 @@ subset_best_sieve_all_folds <- function(folds, trained_LRR_learner_list, learner
   return(output)
 }
 
+
+
+cv_predict_LRR_learner <- function(folds, LRR_learners_all_folds) {
+  cv_fun <- function(fold) {
+    fold_number <- fold_index()
+    index <- validation()
+    v <- origami::fold_index(fold = fold)
+    list(index = index,
+         fold_index = rep(fold_index(), length(index)), predictions=as.data.table(do.call(cbind, lapply(output[[v]] , `[[`, "LRR_pred"))))
+  }
+  comb_ctrl <- list(combiners = list(
+    index = combiner_c, fold_index = combiner_c,
+    predictions = function(x) rbindlist(x, fill = TRUE)
+  ))
+  cv_predictions <- origami::cross_validate(cv_fun, folds, .combine_control = comb_ctrl)
+  cv_predictions <- as.matrix(cv_predictions$predictions[order(cv_predictions$index),] )
+}

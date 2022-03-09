@@ -9,9 +9,10 @@ estimate_initial_likelihood(
   A,
   Y,
   weights = NULL,
-  sl3_Learner_pA1,
-  sl3_Learner_EY,
-  folds = 10
+  sl3_Learner_pA1W,
+  sl3_Learner_EYAW,
+  folds = 10,
+  outcome_type = NULL
 )
 }
 \arguments{
@@ -21,9 +22,9 @@ estimate_initial_likelihood(
 
 \item{Y}{A numeric vector storing the outcome values.}
 
-\item{sl3_Learner_pA1}{A \code{sl3_Learner} object from the \code{tlverse/sl3} R github package that specifies the machine-learning algorithm for learning the propensity score `P(A = 1 | W)`}
+\item{sl3_Learner_pA1W}{A \code{sl3_Learner} object from the \code{tlverse/sl3} R github package that specifies the machine-learning algorithm for learning the propensity score `P(A = 1 | W)`}
 
-\item{sl3_Learner_EY}{A \code{sl3_Learner} object from the \code{tlverse/sl3} R github package that specifies the machine-learning algorithm for learning the outcome conditional mean `E[Y | A, W]`. NOTE: the treatment arms are pooled in the regression. See the preprocessing sl3_Learner \code{Lrnr_stratified} if you wish to stratify the estimation by treatment.}
+\item{sl3_Learner_EYAW}{A \code{sl3_Learner} object from the \code{tlverse/sl3} R github package that specifies the machine-learning algorithm for learning the outcome conditional mean `E[Y | A, W]`. NOTE: the treatment arms are pooled in the regression. See the preprocessing sl3_Learner \code{Lrnr_stratified} if you wish to stratify the estimation by treatment.}
 
 \item{folds}{A number representing the number of folds to use in cross-fitting or a fold object from the package \code{tlverse/origami}. This parameter will be passed to internal \code{sl3_Task} objects that are fed to the code{sl3_Learner}s.}
 }

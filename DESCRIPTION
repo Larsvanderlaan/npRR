@@ -15,7 +15,18 @@ Imports:
   R6,
   stringr,
   origami,
-  delayed
+  delayed,
+  future
+Depends:
+  sl3,
+  SuperLearner,
+  stats,
+  data.table,
+  R6,
+  stringr,
+  origami,
+  delayed,
+  future
 Suggests:
   glmnet,
   hal9001,

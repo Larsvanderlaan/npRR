@@ -1,12 +1,15 @@
 
 
-npRR <- function(LRR_learners, W, A, Y, V = W, weights, Vpred = V, EY1W, EY0W, pA1W, sl3_Learner_EYAW, sl3_Learner_pA1W, list_of_sieves, cross_validate_LRR = FALSE, folds = origami::make_folds(n=length(A))) {
+npRR <- function(LRR_learners, W, A, Y, V = W, weights, Vpred = V, EY1W, EY0W, pA1W, sl3_Learner_EYAW, sl3_Learner_pA1W, list_of_sieves, cross_validate_LRR = FALSE, folds = origami::make_folds(n=length(A)), outcome_type = NULL) {
   if(!is.list(LRR_learners)) {
     LRR_learners <- list(LRR_learners)
   }
   list_of_LRR_learners <- LRR_learners
-  learner_names <- sapply(list_of_learners, `[[`, "name")
-
+  learner_names <- names(list_of_LRR_learners)
+  if(is.null(learner_names) || length(learner_names)!= length(list_of_LRR_learners)) {
+    learner_names <- sapply(list_of_LRR_learners, `[[`, "name")
+    names(list_of_LRR_learners) <- learner_names
+  }
   W <- as.matrix(W)
   A <- as.vector(A)
   Y <- as.vector(Y)
@@ -42,7 +45,7 @@ npRR <- function(LRR_learners, W, A, Y, V = W, weights, Vpred = V, EY1W, EY0W, p
   full_fit_LRR <- train_LRR_learners(V=V, A, Y, EY1W, EY0W, pA1W, weights, list_of_LRR_learners, list_of_sieves, Vpred = W)
   all_LRR_full_best <- subset_best_sieve(full_fit_LRR, learner_names, A, Y, EY1W, EY0W, pA1W, weights)
   all_LRR_full_predictions <- do.call(cbind, lapply(all_LRR_full_best, `[[`, "LRR_pred"))
-  print(dim(all_LRR_full_predictions))
+  output_list <- list(LRR_learners = all_LRR_full_best)
   if(cross_validate_LRR) {
     LRR_learners_all_folds <- lapply(folds, train_LRR_learners_using_fold,  W, A, Y, EY1W, EY0W, pA1W, weights, list_of_LRR_learners, list_of_sieves )
     names(LRR_learners_all_folds) <- seq_along(folds)
@@ -53,15 +56,40 @@ npRR <- function(LRR_learners, W, A, Y, V = W, weights, Vpred = V, EY1W, EY0W, p
     LRR_learners_best_sieve_all_folds <- subset_best_sieve_all_folds(folds, LRR_learners_all_folds, learner_names, A, Y, EY1W, EY0W, pA1W, weights)
 
     cv_predictions <- cv_predict_LRR_learner(folds, LRR_learners_best_sieve_all_folds)
+    print(data.table(cv_predictions))
     best_learner_index_cv <- which.min(DR_risk_function_LRR(cv_predictions, A , Y, EY1W, EY0W, pA1W, weights))
     print(dim(cv_predictions))
     all_LRR_full_predictions <- all_LRR_full_predictions[,best_learner_index_cv]
+    output_list$cv_index <- best_learner_index_cv
   }
-  return(all_LRR_full_predictions)
 
-
+  return(output_list)
 
 
 
 
 }
+
+predict <- function(output, Wpred) {
+  LRR_learners <- output$LRR_learners
+  print(names(LRR_learners))
+  task <- sl3_Task$new(as.data.table(Wpred), covariates = colnames(Wpred), outcome = c())
+  pred_list <- lapply(LRR_learners, function(learner) {
+    print(names(learner))
+    lrnrs <- learner[["learners"]]
+    do.call(cbind, lapply(seq_along(lrnrs), function(index) {
+      lrnr <- lrnrs[[index]]
+      preds <- as.matrix(lrnr$predict(task))[,index]
+    }))
+
+  })
+  preds <- do.call(cbind, pred_list)
+  cv_index <- output$cv_index
+  if(!is.null(cv_index)) {
+    preds <- preds[, cv_index]
+  }
+  preds <- qlogis(preds)
+  return(preds)
+}
+
+

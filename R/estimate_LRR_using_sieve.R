@@ -51,10 +51,8 @@ train_LRR_learners <- function(V, A, Y, EY1W, EY0W, pA1W, weights, list_of_LRR_l
 
   list_of_sieve_nuisances <- lapply(list_of_sieves, function(sieve){
     compute_plugin_and_IPW_sieve_nuisances(basis_generator = sieve, V = V, A = A, Y = Y, EY1W = EY1W, EY0W = EY0W, pA1W = pA1W, weights = weights)})
-  list_of_sieve_nuisances
-
   all_learners_delayed <- lapply(list_of_LRR_learners, train_LRR_learner_all_sieves, list_of_sieve_nuisances = list_of_sieve_nuisances, V = V, A = A, Y = Y, weights = weights, Vpred = Vpred)
-  learner_names <- lapply(list_of_LRR_learners, `[[`, "name")
+  learner_names <- names(list_of_LRR_learners)
   names(all_learners_delayed) <- paste0(learner_names)
   if(compute) {
     all_learners_delayed <- bundle_delayed(unlist(all_learners_delayed))
@@ -78,12 +76,12 @@ subset_best_sieve <- function(trained_learner_list, learner_names, A, Y, EY1W, E
 
   LRR_learners <- lapply(learner_names, function(learner_name) {
     keep <- which(stringr::str_detect(names(LRR_learners), quotemeta(learner_name)))
-
     sieve_learners <- LRR_learners[keep]
 
     # Get LRR predictions on fold-specific training set for all sieves
     # Single learner
     all_LRR_training <- lapply(sieve_learners, `[[`, "LRR_train")
+
     ntrain <- nrow(all_LRR_training[[1]])
     tmp <- do.call(rbind, all_LRR_training)
     list_of_sieve_LRR_training <- lapply(seq_len(ncol(tmp)), function(j) {
@@ -101,22 +99,17 @@ subset_best_sieve <- function(trained_learner_list, learner_names, A, Y, EY1W, E
     all_best_LRR_training <- as.list( rep(NA, length(list_of_sieve_LRR_training)))
     all_best_LRR_pred <- as.list( rep(NA, length(list_of_sieve_LRR_training)))
 
-    print("ko")
-    print(length(list_of_sieve_LRR_training))
-    print(length(list_of_sieve_LRR_training))
+
 
     lapply(seq_along(list_of_sieve_LRR_training), function(j) {
       sieve_LRR_training <- list_of_sieve_LRR_training[[j]]
       print(dim(sieve_LRR_training))
       all_training_risks <-  DR_risk_function_LRR(sieve_LRR_training, A, Y, EY1W, EY0W, pA1W, weights)
 
-      print(all_training_risks)
-      print("min")
-      print(min(all_training_risks))
-      print(which.min(all_training_risks))
+
       best_index <- which.min(all_training_risks)
       all_best_LRR_training[[j]] <<- sieve_LRR_training[,best_index]
-      print(dim(list_of_sieve_LRR_pred[[j]]))
+
       all_best_LRR_pred[[j]] <<- list_of_sieve_LRR_pred[[j]][,best_index]
       all_best_index[j] <<-  best_index
       return(NULL)
@@ -128,7 +121,10 @@ subset_best_sieve <- function(trained_learner_list, learner_names, A, Y, EY1W, E
     all_best_LRR_pred <- do.call(cbind, all_best_LRR_pred)
     colnames(all_best_LRR_pred) <- colnames(all_LRR_pred[[1]])
 
-    return(list(LRR_train = all_best_LRR_training, LRR_pred = all_best_LRR_pred))
+    best_sieve_learners <- lapply(all_best_index, function(best_index) {
+      sieve_learners[[best_index]]$LRR_learner
+    })
+    return(list(LRR_train = all_best_LRR_training, LRR_pred = all_best_LRR_pred, learners = best_sieve_learners))
 
 
   })

@@ -48,8 +48,8 @@ subset_best_sieve_all_folds <- function(folds, trained_LRR_learner_list, learner
   output <- lapply(seq_along(folds), function(fold_number) {
     fold <- folds[[fold_number]]
     training_index <- origami::training(fold = fold)
-    keep <- which(stringr::str_detect(names(LRR_learners_by_fold), paste0("^", fold_number, "\\.", "+")))
-    LRR_learners <- LRR_learners_by_fold[keep]
+    keep <- which(stringr::str_detect(names(trained_LRR_learner_list), paste0("^", fold_number, "\\.", "+")))
+    LRR_learners <- trained_LRR_learner_list[keep]
     LRR_learners <- subset_best_sieve(LRR_learners, learner_names, A[training_index], Y[training_index], EY1W[training_index], EY0W[training_index], pA1W[training_index], weights[training_index])
 
     return(LRR_learners)
@@ -67,7 +67,7 @@ cv_predict_LRR_learner <- function(folds, LRR_learners_all_folds) {
     index <- validation()
     v <- origami::fold_index(fold = fold)
     list(index = index,
-         fold_index = rep(fold_index(), length(index)), predictions=as.data.table(do.call(cbind, lapply(output[[v]] , `[[`, "LRR_pred"))))
+         fold_index = rep(fold_index(), length(index)), predictions=as.data.table(do.call(cbind, lapply(LRR_learners_all_folds[[v]] , `[[`, "LRR_pred"))))
   }
   comb_ctrl <- list(combiners = list(
     index = combiner_c, fold_index = combiner_c,

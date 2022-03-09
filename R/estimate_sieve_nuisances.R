@@ -18,6 +18,13 @@
 #' `family` should be a \code{binomial} object if `Y` is binary and a \code{poisson} object if `Y` is non-binary and nonnegative (e.g. a count).
 #' @param debug ...
 compute_plugin_and_IPW_sieve_nuisances <- function(V, A, Y, EY1W, EY0W, pA1W, weights, basis_generator, family = binomial(), debug = FALSE) {
+  if(all(Y %in% c(0,1))) {
+    family <- binomial()
+  } else if(all(Y >=0)) {
+    family <- poisson()
+  } else {
+    stop("The outcome `Y` must be nonnegative")
+  }
   if(is.null(basis_generator)) {
     return(list(pA1W_star = pA1W, EY1W_star = EY1W, EY0W_star = EY0W, sieve = "no_sieve"))
   }

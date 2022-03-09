@@ -31,7 +31,7 @@ estimate_LRR_using_ERM <- function(V, A, Y,  EY1W, EY0W, pA1W, weights, sl3_LRR_
     data$pseudo_weights <- pseudo_weights
     params <- sl3_LRR_Learner_binomial$params
     params$family <- binomial()
-    sl3_LRR_Learner_binomial <- sl3_LRR_Learner_binomial$reparameterize(params)
+    sl3_LRR_Learner_binomial <- sl3_LRR_Learner_binomial$clone()$reparameterize(params)
     task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "quasibinomial")
   }
   else if(learning_method == "IPW") {

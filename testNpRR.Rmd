@@ -10,14 +10,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
- n <- 2500
+ n <- 5000
   W1 <- runif(n, -1 , 1)
   W2 <- runif(n, -1 , 1)# rbinom(n, 1 , plogis(W1))
   W <- cbind(W1, W2)
   A <- rbinom(n, 1 , plogis(0.5*(W1 + W2 )))
-  Y <- rpois(n, plogis( W1 + W2 ) * exp(A*(1+ 0.5*(W1 + W2))))
+  Y <- rpois(n, plogis( W1 + W2 ) * exp(A*(1+ 0.5*(sin(5*W1) + cos(5*W2)))))
   quantile(Y)
-  LRR <- (1 + 0.5*(W1 + W2))
+  LRR <- (1+ 0.5*(sin(5*W1) + cos(5*W2)))
   true_coefs <- c(1, 0.5, 0.5)
   R <- as.numeric(1:n %in% c(which(Y>0), which(Y==0)[rbinom(sum(Y==0), size = 1, prob = 0.5)==1]))
   R <- rep(1,n)
@@ -31,7 +31,8 @@ knitr::opts_chunk$set(echo = TRUE)
   
   
   list_of_sieves <- list(NULL, fourier_basis$new(orders = c(3,1)))
-  fit_RR <- npRR(list(Lrnr_gam$new(),Lrnr_glmnet$new(lambda = c(1e-9, 1e-4, 1e-3))), W= W, A = A, Y = Y, V = W, weights = weights, sl3_Learner_EYAW = sl3_Learner_EYAW, sl3_Learner_pA1W = sl3_Learner_pA1W, outcome_type = "continuous", list_of_sieves = list_of_sieves,cross_validate_LRR = TRUE) 
+  fit_RR <- npRR(list(Lrnr_gam$new(),Lrnr_hal9001$new(num_knots = 10, max_degree = 1, fit_control = list(cv_select = F), family = binomial(), lambda = c(1e-9, 1e-4, 1e-3))),
+                 W= W, A = A, Y = Y, V = W, weights = weights, sl3_Learner_EYAW = sl3_Learner_EYAW, sl3_Learner_pA1W = sl3_Learner_pA1W, outcome_type = "continuous", list_of_sieves = list_of_sieves,cross_validate_LRR = TRUE) 
 
 ```
 
@@ -40,5 +41,5 @@ knitr::opts_chunk$set(echo = TRUE)
  
 preds <- predict(fit_RR, W)
 data.table(preds)
-data.table(LRR, preds , do.call(cbind, lapply(fit_RR$LRR_learners, `[[`,"LRR_pred")))
+data.table(round(LRR,3), preds , do.call(cbind, lapply(fit_RR$LRR_learners, `[[`,"LRR_pred")))
 ```

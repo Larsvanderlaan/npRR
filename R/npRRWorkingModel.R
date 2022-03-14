@@ -2,7 +2,19 @@
 
 
 
-
+#' Function to compute initial estimates of nuisance functions.
+#' @param Formula_LRR A formula specifying the working model for the log relative risk (or msm for the log relative risk)
+#' @param W A column-named matrix of baseline variables.
+#' @param A A binary vector with values in {0,1} encoding the treatment assignment.
+#' @param Y A numeric vector storing the outcome values.
+#' @param weights A numeric vector of weights
+#' @param EY1W An optional numeric vector of initial estimates of `E[Y | A = 1, W]` for each individual.
+#' @param EY0W An optional numeric vector of initial estimates of `E[Y | A = 0, W]` for each individual.
+#' @param pA1W An optional numeric vector of initial estimates of `P(A = 1} W)` for each individual.
+#' @param sl3_Learner_pA1W A \code{sl3_Learner} object from the \code{tlverse/sl3} R github package that specifies the machine-learning algorithm for learning the propensity score `P(A = 1 | W)`
+#' @param sl3_Learner_EYAW A \code{sl3_Learner} object from the \code{tlverse/sl3} R github package that specifies the machine-learning algorithm for learning the outcome conditional mean `E[Y | A, W]`. NOTE: the treatment arms are pooled in the regression. See the preprocessing sl3_Learner \code{Lrnr_stratified} if you wish to stratify the estimation by treatment.
+#' @param folds A number representing the number of folds to use in cross-fitting or a fold object from the package \code{tlverse/origami}. This parameter will be passed to internal \code{sl3_Task} objects that are fed to the code{sl3_Learner}s.
+#' @param outcome_type Internal use only.
 npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl3_Learner_EYAW, sl3_Learner_pA1W, folds = 10, outcome_type = NULL) {
   try({
     likelihood <- estimate_initial_likelihood(W, A, Y, weights, sl3_Learner_EYAW = sl3_Learner_EYAW, sl3_Learner_pA1W = sl3_Learner_pA1W, folds = folds, outcome_type = outcome_type)

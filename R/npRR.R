@@ -1,5 +1,5 @@
 
-
+#' @export
 npRR <- function(LRR_learners, W, A, Y, V = W, weights, Vpred = V, EY1W, EY0W, pA1W, sl3_Learner_EYAW, sl3_Learner_pA1W, list_of_sieves, cross_validate_LRR = FALSE, folds = origami::make_folds(n=length(A)), outcome_type = NULL) {
   if(!is.list(LRR_learners)) {
     LRR_learners <- list(LRR_learners)

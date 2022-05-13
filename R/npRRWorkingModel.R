@@ -16,7 +16,7 @@
 #' @param folds A number representing the number of folds to use in cross-fitting or a fold object from the package \code{tlverse/origami}. This parameter will be passed to internal \code{sl3_Task} objects that are fed to the code{sl3_Learner}s.
 #' @param outcome_type Internal use only.
 #' @export
-npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl3_Learner_EYAW, sl3_Learner_pA1W, folds = 10, outcome_type = NULL) {
+npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl3_Learner_EYAW, sl3_Learner_pA1W, folds = 10, outcome_type = NULL,  max_eps = 0.05) {
   try({
     likelihood <- estimate_initial_likelihood(W, A, Y, weights, sl3_Learner_EYAW = sl3_Learner_EYAW, sl3_Learner_pA1W = sl3_Learner_pA1W, folds = folds, outcome_type = outcome_type)
     EY1W <- likelihood$EY1
@@ -53,8 +53,8 @@ npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl
   }) %*% scaleinv
   ses <- sqrt(diag(var(EIF_Y_initial + EIF_WA_initial)))
 
-  max_iter <- 100
-  max_eps <- 0.01
+  max_iter <-200
+
   for(i in seq_len(max_iter)) {
     beta <- suppressWarnings(coef(glm.fit(V, EY1W, offset = log(EY0W), family = poisson(), weights = weights)))
     RR_beta <- as.vector(exp(V %*% beta))
@@ -64,7 +64,7 @@ npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl
     H0 <- - V  *  RR_beta
     EIF_Y <- weights/pAW * (H %*% scaleinv) * as.vector(Y - EYAW)
     print(max(abs(colMeans(EIF_Y))))
-    if(all(abs(colMeans(EIF_Y)) <= 0.5 * ses / sqrt(n) / log(n))) {
+    if(all(abs(colMeans(EIF_Y)) <=  ses / n)) {
       #print(colMeans(EIF_Y))
       print("Converged.")
       break
@@ -90,6 +90,30 @@ npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl
     EYAW <- ifelse(A==1, EY1W, EY0W)
 
   }
+  if(!(all(abs(colMeans(EIF_Y)) <=   ses / n))) {
+    #print(colMeans(EIF_Y))
+    warning("Targeting step did not converge. Scores may not be solved at right level.")
+    warning("Doing a one-step update to correct.")
+    beta <- suppressWarnings(coef(glm.fit(V, EY1W, offset = log(EY0W), family = poisson(), weights = weights)))
+    RR_beta <- as.vector(exp(V %*% beta))
+    H <- V * (A  - (1 - A) * RR_beta )
+    H1 <- V
+    H0 <- - V  *  RR_beta
+    fit_onestep <- glm.fit( X = H-1, Y = Y,family = poisson(), offset = log(EYAW), weights = weights/pAW )
+    beta_onestep <- coef(fit_onestep)
+    EY1W <- as.vector(exp(log(EY1W) +  H1 %*% beta_onestep))
+    EY0W <- as.vector(exp(log(EY0W) +  H0 %*% beta_onestep))
+    EYAW <- ifelse(A==1, EY1W, EY0W)
+    beta <- suppressWarnings(coef(glm.fit(V, EY1W, offset = log(EY0W), family = poisson(), weights = weights)))
+    RR_beta <- as.vector(exp(V %*% beta))
+    H <- V * (A  - (1 - A) * RR_beta )
+    H1 <- V
+    H0 <- - V  *  RR_beta
+    EIF_Y <- weights/pAW * (H %*% scaleinv) * as.vector(Y - EYAW)
+  }
+  EIF_WA_at_tmle <- apply(V, 2, function(v) {
+    weights * (v * (RR_beta * EY0W - EY1W) - mean(weights * v * (RR_beta * EY0W - EY1W)))
+  }) %*% scaleinv
 
   tmle_scores <- max(abs(colMeans(EIF_Y)))
   beta_tmle <- suppressWarnings(coef(glm.fit(V, EY1W, offset = log(EY0W), family = poisson(), weights = weights)))
@@ -100,5 +124,5 @@ npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl
                       ci_left = beta - 1.96*ses/sqrt(n),  ci_right = beta + 1.96*ses/sqrt(n),
                       Z_score = Zscore, p_value = pvalue
   )
-  output <- list(coefficients = coefs, EIF = EIF, tmle_scores = tmle_scores )
+  output <- list(coefficients = coefs, EIF = EIF, tmle_scores = tmle_scores, EIF_at_tmle = EIF_Y + EIF_WA_at_tmle )
 }

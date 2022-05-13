@@ -12,13 +12,15 @@ subset_best_sieve(
   EY1W,
   EY0W,
   pA1W,
-  weights
+  weights,
+  efficient_loss_function,
+  V = NULL
 )
 }
 \arguments{
 \item{trained_learner_list}{A unnested list of trained LRR learners as}
 
-\item{learner_names}{Names of LRR learners. Should be `learner_names <- sapply(list_of_LRR_learners, `[[`, "name)`.}
+\item{learner_names}{Names of LRR learners. Should be `learner_names <- sapply(list_of_learners, `[[`, "name)`.}
 
 \item{A}{A binary vector specifying the treatment assignment. The values should be in {0,1}.}
 

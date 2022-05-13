@@ -18,46 +18,65 @@
 #' @param logit_transform An internal argument specifying whether the predictions of \code{sl3_LRR_Learner_binomial} should be logit-transformed.
 #' This argument is needed since the LRR predictions correspond with the logit-scale predictor and not probability-scale predictions of the binomial learner.
 #' For most \code{sl3_Learner}s, the default `logit_transform = TRUE` is necessary for this method to work correctly.
-estimate_LRR_using_ERM <- function(V, A, Y,  EY1W, EY0W, pA1W, weights, sl3_LRR_Learner_binomial, learning_method = c("plugin", "IPW"), Vpred = W, logit_transform = TRUE) {
+estimate_using_ERM <- function(V, A, Y,  EY1W, EY0W, pA1W, weights, family_risk_function, sl3_Learner,  outcome_function_plugin, weight_function_plugin, outcome_function_IPW, weight_function_IPW , learning_method = c("plugin", "IPW"), Vpred = V, transform_function = function(x){x}) {
 
   learning_method <- match.arg(learning_method)
   data <- as.data.table(V)
 
   covariates <- colnames(data)
   if(learning_method == "plugin") {
-    pseudo_outcome <- EY1W / (EY1W + EY0W)
-    pseudo_weights <- weights * (EY1W + EY0W)
+
+    #pseudo_outcome <- EY1W / (EY1W + EY0W)
+    pseudo_outcome <- outcome_function_plugin(A = A, Y = Y, EY1W = EY1W, EY0W = EY0W, pA1W = pA1W)
+    pseudo_weights <- weights * weight_function_plugin(A = A, Y = Y, EY1W = EY1W, EY0W = EY0W, pA1W = pA1W)
+    #pseudo_weights <- weights * (EY1W + EY0W)
     data$pseudo_outcome <- pseudo_outcome
     data$pseudo_weights <- pseudo_weights
-    params <- sl3_LRR_Learner_binomial$params
-    params$family <- binomial()
-    sl3_LRR_Learner_binomial <- sl3_LRR_Learner_binomial$clone()$reparameterize(params)
-    task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "quasibinomial")
+    params <- sl3_Learner$params
+    params$family <- family_risk_function
+    sl3_Learner <- sl3_Learner$clone()$reparameterize(params)
+    task_ERM <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights")
+    if(task_ERM$outcome_type$type %in% c("constant", "categorical")) {
+      task_ERM <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "continuous")
+    }
+
+
+
   }
   else if(learning_method == "IPW") {
-    pseudo_outcome <- A
-    pseudo_weights <- weights * Y / ifelse(A==1, pA1W, 1 - pA1W)
+    pseudo_outcome <- outcome_function_IPW(A = A, Y = Y, EY1W = EY1W, EY0W = EY0W, pA1W = pA1W)
+    pseudo_weights <- weights * weight_function_IPW(A = A, Y = Y, EY1W = EY1W, EY0W = EY0W, pA1W = pA1W)
     data$pseudo_outcome <- pseudo_outcome
     data$pseudo_weights <- pseudo_weights
-    task_LRR <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "binomial")
-  }
-  task_LRR_pred <- sl3_Task$new(as.data.table(Vpred), covariates = covariates)
 
-  sl3_Learner_LRR_trained <- sl3_LRR_Learner_binomial$train(task_LRR)
-  LRR <- sl3_Learner_LRR_trained$predict(task_LRR)
-  LRR_pred <- sl3_Learner_LRR_trained$predict(task_LRR_pred)
-  if(logit_transform) {
-    LRR <- qlogis(LRR)
-    LRR_pred <- qlogis(LRR_pred)
+
+    params <- sl3_Learner$params
+    params$family <- family_risk_function
+    sl3_Learner <- sl3_Learner$clone()$reparameterize(params)
+    task_ERM <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights")
+    if(task_ERM$outcome_type$type %in% c("constant", "categorical")) {
+      task_ERM <- sl3_Task$new(data, covariates = covariates, outcome = "pseudo_outcome", weights = "pseudo_weights", outcome_type = "continuous")
+    }
+
   }
 
-  output <- list(LRR_train = as.matrix(LRR), LRR_pred = as.matrix(LRR_pred), LRR_learner = sl3_Learner_LRR_trained)
+  task_ERM_pred <- sl3_Task$new(as.data.table(Vpred), covariates = covariates, outcome = c(), outcome_type = "continuous")
+
+  sl3_Learner_trained <- sl3_Learner$train(task_ERM[task_ERM$weights!=0])
+  ERM <- sl3_Learner_trained$predict(task_ERM)
+  ERM_pred <- sl3_Learner_trained$predict(task_ERM_pred)
+  if(!is.null(transform_function)) {
+    ERM <- transform_function(ERM)
+    ERM_pred <- transform_function(ERM_pred)
+  }
+
+  output <- list(ERM_train = as.matrix(ERM), ERM_pred = as.matrix(ERM_pred), ERM_learner = sl3_Learner_trained)
   return(output)
 }
 
 #' The double-robust one-step efficient empirical risk function for the log relative risk.
 #' Note this risk function is non-convex.
-#' @param LRR A vector or matrix of log relative risk (LRR) estimates whose risk is to be evaluated using the one-step efficient double-robust risk function.
+#' @param ERM A vector or matrix of log relative risk (LRR) estimates whose risk is to be evaluated using the one-step efficient double-robust risk function.
 #' @param W A matrix of covariate observations
 #' @param A A binary vector specifying the treatment assignment. The values should be in {0,1}.
 #' @param Y A numeric vector of binary or nonnegative observations of the outcome variable.
@@ -67,18 +86,19 @@ estimate_LRR_using_ERM <- function(V, A, Y,  EY1W, EY0W, pA1W, weights, sl3_LRR_
 #' @param weights A numeric vector of observation weights. If no special weighting desired, supply a vector of 1's.
 #' @param debug ...
 #' @param return_loss Boolean for whether to return loss function values or the risk value (i.e. average of the losses)
-DR_risk_function_LRR <- function(LRR, A, Y, EY1W, EY0W, pA1W, weights, debug = FALSE, return_loss = FALSE) {
-  LRR <- as.matrix(LRR)
+efficient_risk_function <- function(theta, A, Y, EY1W, EY0W, pA1W, weights, efficient_loss_function, debug = FALSE, return_loss = FALSE, V = NULL, oracle = FALSE) {
+  LRR <- as.matrix(theta)
   if(!(nrow(LRR) == length(A) && nrow(LRR) == length(EY1W))) {
     stop("Input lengths dont match")
   }
-  EY <- ifelse(A==1, EY1W, EY0W)
-  plugin_risk <- (EY0W + EY1W) * log(1 + exp(LRR)) - EY1W * LRR
-  score_comp <- (A/pA1W)*(log(1 + exp(LRR)) - LRR)*(Y - EY) + ((1-A)/(1-pA1W))*(log(1 + exp(LRR)) - LRR)*(Y - EY)
+  #EY <- ifelse(A==1, EY1W, EY0W)
+  #plugin_risk <- (EY0W + EY1W) * log(1 + exp(LRR)) - EY1W * LRR
+  #score_comp <- (A/pA1W)*(log(1 + exp(LRR)) - LRR)*(Y - EY) + ((1-A)/(1-pA1W))*(log(1 + exp(LRR)) - LRR)*(Y - EY)
+  DR_loss <- weights*apply(as.matrix(LRR), 2, efficient_loss_function, V = V, A = A, Y = Y, EY1W = EY1W, EY0W = EY0W, pA1W = pA1W, oracle = oracle)
   if(debug){
-    print(colMeans(weights * score_comp))
+    #print(colMeans(weights * score_comp))
   }
-  DR_loss <- weights * (plugin_risk + score_comp)
+  #DR_loss <- weights * (plugin_risk + score_comp)
   if(return_loss) {
     return(DR_loss)
   } else {

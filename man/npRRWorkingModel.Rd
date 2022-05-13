@@ -16,7 +16,8 @@ npRRWorkingModel(
   sl3_Learner_EYAW,
   sl3_Learner_pA1W,
   folds = 10,
-  outcome_type = NULL
+  outcome_type = NULL,
+  max_eps = 0.05
 )
 }
 \arguments{

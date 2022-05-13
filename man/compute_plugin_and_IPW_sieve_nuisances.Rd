@@ -14,7 +14,11 @@ compute_plugin_and_IPW_sieve_nuisances(
   pA1W,
   weights,
   basis_generator,
-  family = binomial(),
+  design_function_sieve_plugin,
+  weight_function_sieve_plugin,
+  design_function_sieve_IPW,
+  weight_function_sieve_IPW,
+  family_for_targeting = binomial(),
   debug = FALSE
 )
 }
@@ -37,10 +41,10 @@ The sieve basis will only be generated for these covariates.}
 \item{basis_generator}{A basis_generator object (see \code{fourier_basis} and \code{bspline_basis}) ...
 that specifies a sieve basis transformation of the design matrix \code{W}.}
 
+\item{debug}{...}
+
 \item{family}{An R \code{family} object that specifies the link and risk function used in the data-adaptive sieve update step.
 `family` should be a \code{binomial} object if `Y` is binary and a \code{poisson} object if `Y` is non-binary and nonnegative (e.g. a count).}
-
-\item{debug}{...}
 }
 \description{
 Computes the data-adaptive sieve-based nuisance estimators of E[Y|A,W] and P(A=1|W)

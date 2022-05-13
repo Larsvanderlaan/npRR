@@ -31,6 +31,7 @@ knitr::opts_chunk$set(echo = TRUE)
   
   
   list_of_sieves <- list(NULL, fourier_basis$new(orders = c(3,1)))
+  
   fit_RR <- npRR(list(Lrnr_gam$new(),Lrnr_hal9001$new(num_knots = 10, max_degree = 1, fit_control = list(cv_select = F), family = binomial(), lambda = c(1e-9, 1e-4, 1e-3))),
                  W= W, A = A, Y = Y, V = W, weights = weights, sl3_Learner_EYAW = sl3_Learner_EYAW, sl3_Learner_pA1W = sl3_Learner_pA1W, outcome_type = "continuous", list_of_sieves = list_of_sieves,cross_validate_LRR = TRUE) 
 

@@ -99,7 +99,7 @@ npRRWorkingModel <- function(formula_LRR, W, A, Y, weights, EY1W, EY0W, pA1W, sl
     H <- V * (A  - (1 - A) * RR_beta )
     H1 <- V
     H0 <- - V  *  RR_beta
-    fit_onestep <- glm.fit( X = H-1, Y = Y,family = poisson(), offset = log(EYAW), weights = weights/pAW )
+    fit_onestep <- glm.fit( H, Y,family = poisson(), offset = log(EYAW), weights = weights/pAW )
     beta_onestep <- coef(fit_onestep)
     EY1W <- as.vector(exp(log(EY1W) +  H1 %*% beta_onestep))
     EY0W <- as.vector(exp(log(EY0W) +  H0 %*% beta_onestep))

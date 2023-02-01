@@ -34,3 +34,20 @@ The output of `npRRWorkingModel()` is a list object that includes:
 2. Z-scores and p-values for coefficients 
 3. 95% confidence intervals for coefficients
 
+### Example code
+
+``` r
+library(npRR)
+library(sl3)
+# relative risk
+n <- 250
+W <- runif(n, min = -1,  max = 1)
+A <- rbinom(n, size = 1, prob = plogis(W))
+Y <- rpois(n, lambda = exp( A * (1 + W + 2*W^2)  + sin(5 * W)))
+data <- data.frame(W, A, Y)
+formula = ~ 1 + W
+# Estimate nuisance function internally using sl3 package and generalized additive models
+fit <- npRRWorkingModel(formula, W, A, Y, sl3_Learner_EYAW = Lrnr_gam$new(), sl3_Learner_pA1W = Lrnr_gam$new())
+coef(fit)
+```
+

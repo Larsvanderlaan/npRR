@@ -1,7 +1,7 @@
 # npRR
 
 ## Nonparametric inference for the conditional relative risk function using targeted machine learning
-This package contains the `R` function `npRRWorkingModel()`, which implements a targeted maximum likelihood estimator for the coefficients of the projection of the conditional log relative risk function onto a user-specified linear working model.
+This package contains the `R` function `npRRWorkingModel()`, which implements a targeted maximum likelihood estimator (TMLE) for the coefficients of the projection of the conditional log relative risk function onto a user-specified linear working model.
 The function requires initial estimates of the outcome regression and propensity score which can be passed directly to ``npRRWorkingModel()` 
 or can be estimated internally using the `sl3` ensemble machine learning `R` package.
 
@@ -55,4 +55,14 @@ fit <- npRRWorkingModel(formula_LRR = formula,
                         )
 coef(fit)
 ```
+
+
+### References
+
+1. Van der Laan, Mark J., and Sherri Rose. Targeted learning: causal inference for observational and experimental data. Vol. 4. New York: Springer, 2011.
+2. Van Der Laan, Mark J., and Daniel Rubin. "Targeted maximum likelihood learning." The international journal of biostatistics 2.1 (2006).
+3. Coyle, Jeremy R and Hejazi, Nima S and Malenica, Ivana and
+        Phillips, Rachael V and Sofrygin, Oleg , sl3: Modern Pipelines for Machine Learning and {Super
+        Learning, 2021, R package version 1.4.2
+
 

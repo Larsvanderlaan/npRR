@@ -47,7 +47,12 @@ A <- rbinom(n, size = 1, prob = plogis(W))
 Y <- rpois(n, lambda = exp( A * (1 + W + 2*W^2)  + sin(5 * W)))
 formula = ~ 1 + W
 # Estimate nuisance function internally using sl3 package and generalized additive models
-fit <- npRRWorkingModel(formula_LRR = formula, W = W, A = A, Y = Y, weights = rep(1,n), sl3_Learner_EYAW = Lrnr_gam$new(), sl3_Learner_pA1W = Lrnr_gam$new())
+fit <- npRRWorkingModel(formula_LRR = formula,
+                        W = W, A = A, Y = Y,
+                        weights = rep(1,n), 
+                        sl3_Learner_EYAW = Lrnr_gam$new(),
+                        sl3_Learner_pA1W = Lrnr_gam$new()
+                        )
 coef(fit)
 ```
 

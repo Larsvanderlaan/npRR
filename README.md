@@ -18,13 +18,14 @@ where `f` is a known, user-specified transformation of the covariate vector `W`.
 
 ### Inputs: 
 The `npRRWorkingModel()` function requires the following arguments:
-1. `W`: numeric matrix containing covariate information (e.g. possible confounders)
-2. `A`: binary vector of treatment assignments 
-3. `Y`: A vector of binary or nonnegative outcome values
-4. `weights`: observation weights 
-5. `EY1W` : vector of estimates for `E[Y|A=1,W]` (see also sl3_Learner_EYAW argument)
-6. `EY0W` : vector of estimates for `E[Y|A=0,W]` (see also sl3_Learner_EYAW argument)
-7. `pA1W` : vector of estimates for `P(A=1|W)` (see also sl3_Learner_pA1W argument)
+1. `formula_LRR`: A `formula` object specifying the linear working model for the log relative risk function.
+2. `W`: numeric matrix containing covariate information (e.g. possible confounders).
+3. `A`: binary vector of treatment assignments. 
+4. `Y`: A vector of binary or nonnegative outcome values.
+5. `weights`: observation weights. No weights corresponds with the argument `weights = rep(1, length(Y))`. 
+6. `EY1W` : vector of estimates for `E[Y|A=1,W]` (see also sl3_Learner_EYAW argument).
+7. `EY0W` : vector of estimates for `E[Y|A=0,W]` (see also sl3_Learner_EYAW argument).
+8. `pA1W` : vector of estimates for `P(A=1|W)` (see also sl3_Learner_pA1W argument).
 
 
 ### Output of `npRRWorkingModel()`
@@ -46,7 +47,7 @@ A <- rbinom(n, size = 1, prob = plogis(W))
 Y <- rpois(n, lambda = exp( A * (1 + W + 2*W^2)  + sin(5 * W)))
 formula = ~ 1 + W
 # Estimate nuisance function internally using sl3 package and generalized additive models
-fit <- npRRWorkingModel(formula, W, A, Y, weights = rep(1,n), sl3_Learner_EYAW = Lrnr_gam$new(), sl3_Learner_pA1W = Lrnr_gam$new())
+fit <- npRRWorkingModel(formula_LRR = formula, W = W, A = A, Y = Y, weights = rep(1,n), sl3_Learner_EYAW = Lrnr_gam$new(), sl3_Learner_pA1W = Lrnr_gam$new())
 coef(fit)
 ```
 

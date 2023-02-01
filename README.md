@@ -21,7 +21,7 @@ The `npRRWorkingModel()` function requires the following arguments:
 1. `W`: numeric matrix containing covariate information (e.g. possible confounders)
 2. `A`: binary vector of treatment assignments 
 3. `Y`: A vector of binary or nonnegative outcome values
-4. `weights`: (optional) observation weights
+4. `weights`: observation weights 
 5. `EY1W` : vector of estimates for `E[Y|A=1,W]` (see also sl3_Learner_EYAW argument)
 6. `EY0W` : vector of estimates for `E[Y|A=0,W]` (see also sl3_Learner_EYAW argument)
 7. `pA1W` : vector of estimates for `P(A=1|W)` (see also sl3_Learner_pA1W argument)
@@ -44,10 +44,9 @@ n <- 250
 W <- runif(n, min = -1,  max = 1)
 A <- rbinom(n, size = 1, prob = plogis(W))
 Y <- rpois(n, lambda = exp( A * (1 + W + 2*W^2)  + sin(5 * W)))
-data <- data.frame(W, A, Y)
 formula = ~ 1 + W
 # Estimate nuisance function internally using sl3 package and generalized additive models
-fit <- npRRWorkingModel(formula, W, A, Y, sl3_Learner_EYAW = Lrnr_gam$new(), sl3_Learner_pA1W = Lrnr_gam$new())
+fit <- npRRWorkingModel(formula, W, A, Y, weights = rep(1,n), sl3_Learner_EYAW = Lrnr_gam$new(), sl3_Learner_pA1W = Lrnr_gam$new())
 coef(fit)
 ```
 

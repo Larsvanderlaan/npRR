@@ -4,7 +4,7 @@
 This package contains the `R` function `npRRWorkingModel()`, which implements a targeted maximum likelihood estimator (TMLE) for the coefficients of the projection of the conditional log relative risk function onto a user-specified linear working model. This TMLE can be viewed as a model-robust version of the semiparametric TMLE studied in Tuglus, Porter, van der Laan (2011).
 
 
-The function requires initial estimates of the outcome regression and propensity score which can be passed directly to ``npRRWorkingModel()` 
+The function requires initial estimates of the outcome regression and propensity score which can be passed directly to `npRRWorkingModel()` 
 or can be estimated internally using the `sl3` ensemble machine learning `R` package.
 
 ### Data-structure

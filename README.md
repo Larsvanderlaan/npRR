@@ -1,4 +1,4 @@
-# npRR
+# npRR: model-robust inference for the conditional relative risk using targeted learning  
 
 ## Nonparametric inference for the conditional relative risk function using targeted machine learning
 This package contains the `R` function `npRRWorkingModel()`, which implements a targeted maximum likelihood estimator (TMLE) for the coefficients of the projection of the conditional log relative risk function onto a user-specified linear working model. This TMLE can be viewed as a model-robust version of the semiparametric TMLE studied in Tuglus, Porter, van der Laan (2011).
